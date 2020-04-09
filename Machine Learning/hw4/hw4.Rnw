@@ -1,0 +1,555 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath,amssymb,float,amsfonts,enumitem,tcolorbox,hyperref,bm}
+
+\include{macros}
+
+<<{r  global_options},echo=FALSE>>=
+knitr::opts_chunk$set(include=TRUE,echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width=3, fig.height=3, fig.align='center',
+                      fig.asp = 1, cache= FALSE
+                      )
+@
+
+\title{STAT 154: Homework 4}
+\author{Release date: \textbf{Thursday, Mar 7}}
+\date{Due by: \textbf{11 PM, Wednesday, Mar 20}}
+
+\begin{document}
+
+\maketitle
+
+\section*{The honor code}
+
+\begin{enumerate}[label=(\alph*)]
+\item Please state the names of people who you worked with for this homework.
+You can also provide your comments about the homework here.
+\begin{tcolorbox}
+\vspace{20mm}
+\end{tcolorbox}
+
+\item  Please type/write the following sentences yourself and sign at the end. We want to make
+it \emph{extra} clear that nobody cheats even unintentionally.
+
+\emph{I hereby state that all of my solutions were entirely in my words and were written by me.
+I have not looked at another student’s solutions and I have fairly credited all external 
+sources in this write up.}
+\begin{tcolorbox}
+\vspace{20mm}
+\end{tcolorbox}
+
+\end{enumerate}
+
+\newpage 
+\section*{Submission instructions}
+
+\begin{itemize}
+\item It is a good idea to revisit your notes, slides and reading;
+and synthesize their main points BEFORE doing the
+homework.
+
+\item A .Rnw file corresponding to the homework is also
+uploaded for you. You may use that to write-up
+your solutions. Alternately, you can typeset your solutions in latex or
+submit neatly handwritten/scanned solutions.
+
+\item \textbf{For the parts that ask you to 
+implement/run some R code, your answer
+should look something like this (code followed by result):}
+<<>>=
+myfun<- function(){
+show('this is a dummy function')
+}
+myfun()
+@
+Note that this is automatically generated if you use
+the R sweave environment.
+
+\item You need to submit the following:
+\begin{enumerate}
+\item A pdf of your write-up to ``HW4 write-up'' that includes some of
+the code snippets and plots as asked in different parts.
+\item A Rmd or Rnw file, that has all your entire code, to ``HW4 code''.
+\end{enumerate}
+\item Ensure a proper submission to gradescope, otherwise it will
+not be graded. \textbf{This time we will not entertain any regrade
+requests for improper submission.}
+\end{itemize}
+
+\section*{Homework Overview}
+This homework revisits ordinary least squares and other regression methods. 
+Some problems are from the \textbf{ESL book} 12th printing (The Elements of Statistical Learning) that
+is available at the following website:\\
+\href{https://web.stanford.edu/~hastie/ElemStatLearn/}{https://web.stanford.edu/~hastie/ElemStatLearn/}.)
+
+\section{True or False (8 pts)}
+Examine whether the following statements are true or false and \emph{provide
+one line justification}.
+Linear model in the following statements refers to the linear model studied in class (see equation~\eqref{eq:linearModel}
+for a concrete reference.)
+\begin{enumerate}[label=(\alph*)]
+\item Under the linear model, the OLS estimator of the regression coefficients is unbiased.
+\item For the linear model, bias of the ridge regression increases and the variance decreases as we increase the regularization parameter $\lambda$.
+\item The LASSO, relative to least squares, is less flexible and hence will give improved prediction accuracy when its increase in variance is less than its decrease in bias.
+\item In LASSO, no matter how large you choose regularization $\lambda$,
+the estimator $\hat{\beta}(\lambda)$ will never be the vector $0$.
+\item In LASSO, as $\lambda$ increases, the $\ell_1$-norm of the estimator
+$\hat{\beta}(\lambda)$ always decreases.
+\item Every eigenvalue of an idempotent matrix is always either zero or one. (Recall that A square matrix $M \in \real^{m \times m}$ is called \textit{idempotent} if $M^2 = M$.)
+\item Let $X$ be an $n \times \dims$ matrix of full rank. Let $H = X\parenth{X\tp X}^{-1} X\tp$. The matrix $H$ is
+symmetrix, idempotent and PSD.
+\item Let $Q = \Ind_n - H$ where $H$ is defined in the previous part. We have $\text{trace}(Q) = n$.
+\end{enumerate}
+\emph{Fun fact:} Note that for a feature matrix $X$ with full column rank the matrix $H = X\parenth{X\tp X}^{-1} X\tp$ is called the \textit{hat matrix} because in ordinary least squares, the predicted responses are given by $\hat{y} = H {y}$, i.e., the matrix
+$H$ adds a hat to $y$.
+
+\section{OLS theoretical properties (9 pts)}
+\begin{enumerate}
+  \item (2 pts) Consider a linear model where we observe the samples $
+  (x_i, y_i)$
+  for $i=1, \ldots, n$,  that are generated as follows
+  \begin{align}
+    \label{eq:linearModel}
+    y_i = x_i\tp \beta^* + \epsilon,
+  \end{align}
+  where the error $\epsilon \stackrel{i.i.d.}{\sim} \Normal(0, \sigma^2)$.
+  \textbf{Show that the OLS estimate $\hat{\beta}$ on data $\mat X \in \real^
+    {n
+    \times \dims}$ and $\mat Y \in \real^n$ satisfies
+    \begin{align*}
+      \hat{\beta} \sim \Normal\parenth{\beta^*, \sigma^2\parenth{\mat X\tp
+      \mat X}^{-1} }.
+    \end{align*}
+    Also conclude that $\Exs\brackets{\mat X \hat{\beta}} = \mat X \beta^*$.}
+  \item (2 pts) In the Gaussian linear model described above, \textbf{show
+    that $\Exs[RSS] = \sigma^2 (n-d)$}.
+  \item (2 pts) \textbf{ESL book Ex. 3.3 (a)} (part (b) is not needed). 
+  \emph{Hint}: The notion unbiased linear estimator is explained in Section
+  3.2.2 around equation (3.19).
+  \item (3 pts) \textbf{ESL book Ex. 2.9}. We expect a solution that \textbf{does
+    not} use the explicit data generation process. \emph{Partial credit is
+        given if you use the explicit data generation process.}
+\end{enumerate}
+
+
+\section{Theory of Ridge Regression (14 pts)} % (fold)
+\label{sec:ridge_regression}
+Given the feature matrix $\mat X \in \real^{n \times d}$ and the
+responses $\vec y \in \real^n$, ridge regression solves the following
+penalized least squares problem:
+\begin{align}
+\label{eq:ridge}
+  \min_{\theta} \enorm{\mat X \theta - \vec y}^2 + \lambda \enorm{\theta}^2
+\end{align}
+Let $\mat X\tp \mat X$ have the following eigen-decomposition: 
+$\mat X \tp \mat X = \mat U \mat D \mat U\tp$ where $\mat D$ is a diagonal
+matrix with non-negative entries.
+
+Let $\rtheta$ denote the solution for the problem~
+\eqref{eq:ridge} above.
+\begin{enumerate}
+  \item (1 pt) \textbf{Show that for any $\lambda >0$, the solution $\theta^
+    {\mathrm{RR}}
+    (\lambda)$ is unique and derive its expression.}
+  \item (2 pts) For \emph{all the following parts}, we assume the linear
+  regression
+  model:
+  That is the data is generated as follows:
+  \begin{align*}
+    \vec y = \mat X \theta^* + \bm{\epsilon}
+  \end{align*}
+  where $\bm{\epsilon} \sim \mathcal{N}(0, \sigma^2 I_n)$.
+  Using the previous part, \textbf{show that the distribution of the ridge-estimate
+    is given as follows:}
+  \begin{align*}
+    \rtheta &\sim \mathcal{N}(\mat W_\lambda \theta^*, \sigma^2 \mat W_\lambda
+    (\mat X\tp \mat X+ \lambda \mat I_d)^{-1})\\
+    \quad\text{where}\quad
+    \mat W_\lambda &= (\mat X\tp \mat X+ \lambda \mat I_d)^{-1} \mat X\tp
+    \mat X.
+  \end{align*}
+  \item (4 pts) Let $\mat X\tp \mat X = \mat U \mat D \mat U\tp$ with $\mat
+  D_{ii}= d_i$.
+  \textbf{Show the following:
+  \begin{enumerate}[label=(\alph*)]
+    \item The squared bias is given by 
+    \begin{align*}
+      \text{squared bias}=\enorm{\Exs[{\rtheta}] - \theta^*}^2 = \sum_{i=1}^d\frac{\lambda^2}
+      {(d_i+\lambda)^2} (v_i)^2,
+    \end{align*}
+    where $v = \mat U\tp \theta^*$.
+    \item The (scalar) variance is given by
+    \begin{align*}
+      \text{scalar-variance}=
+      \Exs\enorm{\rtheta-\Exs[\rtheta]}^2 = \sigma^2\sum_{i=1}^d \frac{d_i}
+      {(d_i+\lambda)^2}.
+    \end{align*}
+  \end{enumerate}}
+  \emph{Note} that here we are considering the scalar versions of the bias
+  and
+  variance defined in class by taking the norms of the corresponding
+  quantities.
+  
+  \item (2 pts) \textbf{
+  What is the value of the squared-bias and variance at $\lambda =0 $ and
+  as $\lambda \to \infty$. Do you see a trade-off in the squared-bias and
+  variance  change as $\lambda$
+  increases? }
+  
+  \item (2 pts) Recall the definition of  the moment matrix $\mat M$ from class:
+  \begin{align*}
+    \mat M (\lambda) = \Exs[(\rtheta-\theta^*)(\rtheta-\theta^*)\tp].
+  \end{align*}
+  Recall the mean-squared error
+  \begin{align*}
+    \text{MSE}(\rtheta):=  \Exs[\enorm{\rtheta-\theta^*}^2].
+  \end{align*}
+  
+  \textbf{Show that $ \Exs[\enorm{\rtheta-\theta^*}^2] = \mathrm{trace}(\mat M(\lambda))$.
+  Moreover, show that
+  \begin{align*}
+   \text{MSE}(\rtheta)
+     = \text{squared-bias} +  \text{scalar-variance}
+  \end{align*}}
+  \item (3 pts) Recall that when $\mat X \tp \mat X$ is invertible, the OLS-estimator
+  is unbiased. For this case, \textbf{show that its mean squared error satisfies $\text{MSE}(\theta^{\mathrm{OLS}})
+  =\mathrm{trace}(\mat M(0))$.}
+  \textbf{Furthermore, show that
+  there exists a range of $\lambda > 0$ for which }
+  \begin{align*}
+    \text{MSE}(\rtheta)
+    < \text{MSE}(\theta^{\mathrm{OLS}}).
+  \end{align*}
+  \textbf{Conclude that there always exists a range of $\lambda > 0$, for
+    which the MSE is smaller for ridge regression when compared to OLS in the Gaussian linear
+    model.}
+\end{enumerate}
+% section ridge_regression (end)
+
+
+\section{Gradient descent for simple functions (8 pts)}
+A function $f: \real^\dims \rightarrow \real$ is called \textit{convex}, if
+\begin{align*}
+  \forall x \in \real^\dims, y \in \real^\dims, \lambda \in [0, 1], f(\lambda x + (1-\lambda) y) \leq \lambda f(x) + (1-\lambda) f(y).
+\end{align*}
+Recall Taylor's theorem for twice differentiable functions of vectors,
+  which holds for all $x, y \in \mathbb{R}^d$:
+\begin{align*}
+f(y) = f(x) + \nabla f(x)^\top (y - x) + \frac{1}{2} (y - x)^\top \nabla^2 f(\widetilde{x}) (y - x),
+\end{align*}
+for some $\widetilde{x}$. 
+One can show that a \emph{twice differentiable function} $f$ is convex if and only if $\nabla^2 f(x)$ is positive semidefinite for all $x \in \mathbb{R}^d$.
+You can take this fact for granted.\footnote{This problem draws inspiration
+from the class CS 189.}
+
+\begin{enumerate}
+
+\item (2 pts) Let $L \geq 0$. Consider the function of one variable $f(x) = \frac{L}
+{2} x^2$. \textbf{Show that it is convex. Derive the gradient descent update
+where we use a step-size of $\gamma$
+and start at some point $x^{(0)} \neq 0$.}
+
+\item (3 pts) \textbf{What does the behavior of the updates look like for
+the above setting and the choices
+$\gamma \in \{1/L, 2/L\}$? What happens when we use a step size $\gamma \in
+\left[ 0, \frac{2}{L}\right)$ such that $\gamma \neq 1/L$? For this step size, how many steps does it take 
+for gradient descent updates to converge to within $\epsilon$ of the optimum (as a function of the tuple $(\gamma, L, |x^{(0)}|, \epsilon)$)?}
+
+\item (1 pt) \textbf{How do your answers in the previous part change
+if $f(x) = \frac{L}{2} (x - c)^2$ for some constant $c$?}
+
+\item (2 pts) Let $L \geq m \geq 0$. Now consider the function of two variables
+$f(x) = \frac{L}{2} x_1^2 + \frac{m}{2}x_2^2$. \textbf{Show that the function
+is convex by computing its Hessian $\nabla^2 f(x)$.
+Derive closed form expressions for the iterations if we start at the
+point $(a, b)$, and run gradient descent with step-size $\gamma$.} Start by writing out the result of the first iteration as $A \begin{bmatrix} a\\ b \end{bmatrix}$ for some matrix $A$.
+% 
+% \item With the setup of the previous part, let us say we started at the
+% point $(0, 5)$. What is the maximum step-size that results in convergence? How would your answer change if we started at the point $(5, 0)$?
+% 
+% \item Derive closed form expressions for the iterations if we start at the
+% point $(a, b)$, and run gradient descent with step-size $\gamma$. Start by writing out the result of the first iteration as $A \begin{bmatrix} a\\ b \end{bmatrix}$ for some matrix $A$.
+
+% \item Now consider the function of one variable $f(x) = L|x|$. Is this function
+% convex? Discuss how performing gradient descent with a fixed step-size performs on this function.
+
+\end{enumerate}
+
+\section{High dimensional regression (9 pts, readable code snippet required in the write-up)}
+Suppose we have a design matrix $\mat X \in \real^{n \times d}$ where $d
+> n$, i.e., we have many more predictor variables than observations.
+ Moreover, we have quantitative response vector $\vec y \in \real^n$, and
+ we plan to fit a linear regression model.
+\begin{enumerate}
+ \item (2 pts) \textbf{Explain why the ordinary least squares solution for
+  $(\mat
+  X, \vec y)$ is not unique. What can you say about the residuals of any
+  OLS solution?}
+\item (1 pt) \textbf{Is the ridge regression solution unique? Why or why
+not?}
+\item (1 pt) Suppose you compute a series of ridge solutions $\widehat{\beta}
+(\lambda)$ for $\mat X$ and $\vec y$, letting $\lambda$ get monotonically
+smaller. \textbf{What can you say about the limiting ridge solution as 
+$\lambda \downarrow 0$?}
+\item (1 pt) (Code) Fix $n = 1000, d = 5000$. Generate a design matrix $\mat X
+\in \real^{n \times d}$ with each entry drawn i.i.d. from $\Normal(0, 1)$,
+an error vector $\bm{\epsilon} \in \real^{n}$ with each entry drawn i.i.d. from $\Normal(0, 0.25)$ and a response vector $\vec y \in \real^{n}$, satisfying 
+\begin{align*}
+  \vec y = \mat X \beta^* + \bm{\epsilon},
+\end{align*}
+where $\beta^* = (\underbrace{1,\ldots,1}_{15},0,\ldots,0)\tp$ having $15$
+non-zero entries. \textbf{Show your code for this part in the write-up.
+\emph{Do not} display any data.}
+\item (1 pt) (Code) Split the $n$ samples into training (size $4n/5$) and
+test (size $n/5$) sets. \textbf{Show your code for this part in the write-up}.
+\item (1 pt) (Code) Using the \textbf{glmnet} package, fit ridge regression
+on the training data. Plot the training MSE vs lambda and test MSE vs lambda
+in the same plot with two different colors. We expect you to choose a large range of lambdas 
+so that the test MSE is not monotone.
+\textbf{Show the plots
+and the code for this part in the write-up.}
+\item (1 pt) (Code) Using the \textbf{glmnet} package, fit LASSO regression on the training data. Plot the training MSE vs lambda and test MSE vs lambda in the same plot with two different colors. We expect you to choose a large range of lambdas  so that the test MSE is not monotone.
+\textbf{Show the plots and the code for this part in the write-up.}
+\item (1 pt) \textbf{Which model ridge or LASSO and what regularization 
+parameter has the smallest test MSE?}
+\end{enumerate}
+
+\section{Regression analysis on Ames Housing dataset (15 pts, Readable code snippet required in the write-up)}
+First download the Ames Housing dataset (AmesHousing.txt) from Piazza. You can find a complete description of the variables here (\href{http://jse.amstat.org/v19n3/decock/DataDocumentation.txt}{http://jse.amstat.org/v19n3/decock/DataDocumentation.txt}).
+The dataset contains information from the Ames Assessor’s Office used in computing assessed values for individual residential properties sold in Ames, IA from 2006 to 2010.
+
+You may load the dataset as follows
+<<>>=
+# SET YOUR OWN WORKING DIRECTORY
+# setwd("/Users/yuansichen/UCB/Teaching/2019_Spring/Problems/stat154copy/hws/hw4/")
+
+# load the Ames txt data 
+Ames <- read.delim("AmesHousing.txt", header = TRUE, sep = "\t", dec = ".")
+@
+
+\paragraph{Motivation:}
+A regression analysis can be used to answer typical questions as follows
+\begin{itemize}
+  \item What is the predicted sale price of a 2B2B house with 1500 square feet living area?
+  \item Which is the more important variable in predicting sale price, garage area or open porch area?
+\end{itemize}
+This type of analysis could be useful if you want to buy or sell a house in Ames area. 
+
+
+\paragraph{Data preprocessing: }
+For the purpose of this homework, we introduce one particular data preprocessing
+pipeline (might not be optimal) for this dataset. We will only use a limited
+number of variables. \textbf{From now on, you will use the data.frame \emph{AmesTiny}
+as the main data frame. Please split the training and test dataset
+exactly as we did in the following code (with the same seed).}
+<<>>=
+### DO NOT CHANGE THIS PART, BEGIN
+# load the Ames txt data 
+Ames <- read.delim("AmesHousing.txt", header = TRUE, sep = "\t", dec = ".")
+
+continuousVar <- colnames(Ames)[grep("Frontage|SF|Area|Porch", 
+                                     colnames(Ames))]
+
+AmesTiny <- Ames[, c(continuousVar, 
+                     c("Overall.Qual",
+                       "Overall.Cond","Neighborhood",
+                       "SalePrice"))]
+# check NA
+# colSums(is.na(AmesTiny))
+# fill the Garage.Area NA with 0
+AmesTiny$Garage.Area[is.na(AmesTiny$Garage.Area)] = 0
+# change factor variable to actual factor in the data frame
+AmesTiny$Overall.Qual <- factor(AmesTiny$Overall.Qual)
+AmesTiny$Overall.Cond <- factor(AmesTiny$Overall.Cond)
+# fill the continuous variable with column mean
+for(i in 1:ncol(AmesTiny)){
+  AmesTiny[is.na(AmesTiny[,i]), i] <- mean(AmesTiny[,i], na.rm = TRUE)
+}
+
+# divide the data into training and test datasets
+set.seed(12345678)
+testSize <- floor(nrow(AmesTiny)*0.1)
+testIndex <- sample(seq_len(nrow(AmesTiny)), size = testSize)
+AmesTinyTrain <- AmesTiny[-testIndex, ]
+AmesTinyTest <- AmesTiny[testIndex, ]
+### DO NOT CHANGE THIS PART, END
+@
+
+\subsection{Fitting OLS (7 pts)}
+Use \textbf{lm()} to fit the following regression models to predict log(SalePrice + 1) using a handful of predictors. As you will notice, the complexity of the models will increase from one to the next.
+\paragraph{Model 1: ($\dims = 2$)}
+\begin{align*}
+  \textbf{log(SalePrice + 1)} = \beta_0 + \beta_1 \textbf{Gr.Liv.Area} + \epsilon
+\end{align*}
+
+\paragraph{Model 2: ($\dims = 3$)}
+\begin{align*}
+  \textbf{log(SalePrice + 1)} = \beta_0 + \beta_1 \textbf{Gr.Liv.Area} + \beta_2 \textbf{Garage.Area} + \epsilon
+\end{align*}
+
+\paragraph{Model 3: ($\dims = 4$)}
+\begin{align*}
+  \textbf{log(SalePrice + 1)} = \beta_0 + \beta_1 \textbf{Gr.Liv.Area} + \beta_2 \textbf{Garage.Area} + \beta_3 \textbf{Open.Porch.SF} + \epsilon
+\end{align*}
+
+\paragraph{Model 4: ($\dims = 5$)}
+\begin{align*}
+  \textbf{log(SalePrice + 1)} = \beta_0 + \beta_1 \textbf{Gr.Liv.Area} + \beta_2 \textbf{Garage.Area} + \beta_3 \textbf{Open.Porch.SF} + \beta_4 \textbf{Lot.Area} + \epsilon
+\end{align*}
+
+\paragraph{Model 5: ($\dims = 14$)}
+\begin{align*}
+  \textbf{log(SalePrice + 1)} = \beta_0 + \beta_1 \textbf{Gr.Liv.Area} + \beta_2 \textbf{Garage.Area} + \beta_3 \textbf{Open.Porch.SF} + \beta_4 \textbf{Lot.Area} + \\
+  (\beta_{5}, \ldots, \beta_{5+8})\tp \textbf{Dummified.Overall.Qual}+\epsilon
+\end{align*}
+
+\paragraph{Model 6: ($\dims = 22$)}
+\begin{align*}
+  \textbf{log(SalePrice + 1)} = \beta_0 + \beta_1 \textbf{Gr.Liv.Area} + \beta_2 \textbf{Garage.Area} + \beta_3 \textbf{Open.Porch.SF} + \beta_4 \textbf{Lot.Area} + \\
+  (\beta_{5}, \ldots, \beta_{5+8})\tp \textbf{Dummified.Overall.Qual} + (\beta_{14}, \ldots, \beta_{14+7})\tp \textbf{Dummified.Overall.Cond} +\epsilon
+\end{align*}
+
+\paragraph{Model 7: ($\dims = 23$)}
+\begin{align*}
+  \textbf{log(SalePrice + 1)} = \beta_0 + \beta_1 \textbf{Gr.Liv.Area} + \beta_2 \textbf{Garage.Area} + \beta_3 \textbf{Open.Porch.SF} + \beta_4 \textbf{Lot.Area} + \\
+  (\beta_{5}, \ldots, \beta_{5+8})\tp \textbf{Dummified.Overall.Qual} + (\beta_{14}, \ldots, \beta_{14+7})\tp \textbf{Dummified.Overall.Cond} +\\
+  \beta_{22} \textbf{log(Gr.Liv.Area+1)} +\epsilon
+\end{align*}
+
+\paragraph{Model 8: ($\dims = 24$)}
+\begin{align*}
+  \textbf{log(SalePrice + 1)} = \beta_0 + \beta_1 \textbf{Gr.Liv.Area} + \beta_2 \textbf{Garage.Area} + \beta_3 \textbf{Open.Porch.SF} + \beta_4 \textbf{Lot.Area} + \\
+  (\beta_{5}, \ldots, \beta_{5+8})\tp \textbf{Dummified.Overall.Qual} + (\beta_{14}, \ldots, \beta_{14+7})\tp \textbf{Dummified.Overall.Cond} +\\
+  \beta_{22} \textbf{log(Gr.Liv.Area+1)} + \beta_{23} \textbf{log(Gr.Liv.Area+1)}^2 + \epsilon
+\end{align*}
+
+\paragraph{Model 9: ($\dims = 25$)}
+\begin{align*}
+  \textbf{log(SalePrice + 1)} = \beta_0 + \beta_1 \textbf{Gr.Liv.Area} + \beta_2 \textbf{Garage.Area} + \beta_3 \textbf{Open.Porch.SF} + \beta_4 \textbf{Lot.Area} + \\
+  (\beta_{5}, \ldots, \beta_{5+8})\tp \textbf{Dummified.Overall.Qual} + (\beta_{14}, \ldots, \beta_{14+7})\tp \textbf{Dummified.Overall.Cond} +\\
+  \beta_{22} \textbf{log(Gr.Liv.Area+1)} + \beta_{23} \textbf{log(Gr.Liv.Area+1)}^2 \\
+  \beta_{24} \textbf{log(Gr.Liv.Area+1)}^3 + \epsilon
+\end{align*}
+
+\paragraph{Model 10: ($\dims = 26$)}
+\begin{align*}
+  \textbf{log(SalePrice + 1)} = \beta_0 + \beta_1 \textbf{Gr.Liv.Area} + \beta_2 \textbf{Garage.Area} + \beta_3 \textbf{Open.Porch.SF} + \beta_4 \textbf{Lot.Area} + \\
+  (\beta_{5}, \ldots, \beta_{5+8})\tp \textbf{Dummified.Overall.Qual} + (\beta_{14}, \ldots, \beta_{14+7})\tp \textbf{Dummified.Overall.Cond} +\\
+  \beta_{22} \textbf{log(Gr.Liv.Area+1)} + \beta_{23} \textbf{log(Gr.Liv.Area+1)}^2 \\
+  \beta_{24} \textbf{log(Gr.Liv.Area+1)}^3 + \beta_{25} \textbf{log(Gr.Liv.Area+1)}^4 + \epsilon
+\end{align*}
+
+\paragraph{Model 11: ($\dims = 27$)}
+\begin{align*}
+  \textbf{log(SalePrice + 1)} = \beta_0 + \beta_1 \textbf{Gr.Liv.Area} + \beta_2 \textbf{Garage.Area} + \beta_3 \textbf{Open.Porch.SF} + \beta_4 \textbf{Lot.Area} + \\
+  (\beta_{5}, \ldots, \beta_{5+8})\tp \textbf{Dummified.Overall.Qual} + (\beta_{14}, \ldots, \beta_{14+7})\tp \textbf{Dummified.Overall.Cond} +\\
+  \beta_{22} \textbf{log(Gr.Liv.Area+1)} + \beta_{23} \textbf{log(Gr.Liv.Area+1)}^2 \\
+  \beta_{24} \textbf{log(Gr.Liv.Area+1)}^3 + \beta_{25} \textbf{log(Gr.Liv.Area+1)}^4 \\
+  \beta_{26} \textbf{log(Gr.Liv.Area+1)}^5 + \epsilon
+\end{align*}
+\begin{enumerate}
+  \item (1 pt) \textbf{Implement your R function  \emph{MSE()}
+  (show your code in the write-up)} which takes
+  regression coefficient $\beta \in \real^d$, new data matrix $\mat X \in
+  \real^{n \times d}$ and response $\vec y \in \real^n$ as input, and output 
+  the mean squared error.
+  \begin{align*}
+    MSE = \frac{1}{n} \vecnorm{\vec y - \mat X \beta}{2}^2.
+  \end{align*}
+  
+  \item (1 pt) \textbf{Implement your R function \emph{R2()}
+  (show your code in the write-up)} which takes regression coefficient $\beta
+  \in \real^d$, a data matrix $\mat X \in \real^{n \times d}$ and response
+  $\vec y \in \real^n$ as input, and outputs coefficient of determination:
+  \begin{align*}
+    R^2 = \textbf{cor}\parenth{\vec y, \mat X \beta}^2,
+  \end{align*}
+  where $\textbf{cor}$ denotes correlation.
+  
+  \item (3 pt) Use your functions \textbf{MSE()}, \textbf{R2()} to create a data frame \textbf{modelQuality} for for these measures (MSE, $R^2$) on the training data set \textbf{AmesTinyTrain} for all 11 models above. The data frame \textbf{modelQuality} should have 2 columns and 11 rows. Check your results of MSE and R2 with R's implementation (Create another data frame \textbf{modelQualityRImp} using \textbf{summary()} on the output of \textbf{lm()}). \textbf{Show code and print \textbf{modelQuality} and \textbf{modelQualityRImp} side by side}. Which model has smallest training MSE? \\
+  Hint: you can get the data design matrix from the \textbf{lm()} output using \textbf{model.matrix()}.
+<<>>=
+# columns involved in 11 models, you might want to use a for loop to loop over models
+Xnames <- c("Gr.Liv.Area", "Garage.Area","Open.Porch.SF",
+                     "Lot.Area",
+                     "factor(Overall.Qual)",
+                      "factor(Overall.Cond)",
+                     "I(log(Gr.Liv.Area+1))",
+                      "I(log(Gr.Liv.Area+1)^2)",
+                      "I(log(Gr.Liv.Area+1)^3)",
+                     "I(log(Gr.Liv.Area+1)^4)","I(log(Gr.Liv.Area+1)^5)")
+@
+  
+  
+  \item (1 pt) \textbf{Plot the training MSEs against the number of predictors
+  in the model and describe in one sentence any trend in the graph (show
+  only plot no code required)}. The number of predictors is treated as a
+  rough measure
+  of model complexity here.
+  
+  \item (1 pt) \emph{Normally, it is not allowed to check the test data set
+    until the last step of the analysis}. Here, for the purpose of this
+    homework, \textbf{plot both the training MSEs and test MSEs against the
+        number of predictors in the model. Is test MSE always decreasing?
+        Which model has the lowest test MSE? (show only the plot, no code
+        required).} Hint: Use \textbf{predict()}
+\end{enumerate}
+
+\subsection{Single validation set (or holdout method) for model selection (2 pts)}
+As we mentioned in class, the training MSEs are not an appropriate way to assess the
+predictive power of the models, since the training set, which is used for calibrating models, is
+also used for model testing.
+
+The training (or in-sample) MSEs tend to have an optimistic bias towards complicated
+models. There are in-sample metrics that take model complexity into account, such as
+Akaike’s information criterion (AIC) and Bayesian Information Criterion (BIC), but these
+are not applicable when an explicit likelihood is not present in the model.
+
+The most straightforward approach is to split the training dataset into two parts: one for actual training
+and one for validation. This approach is commonly known as the validation method. A common
+split is 80-20: use 80\% of the data to train the model and 20\% to validate the model.
+
+\begin{enumerate}
+\item (0pts) Select 20\% of your dataset as holdout. You should simply copy the code below.
+<<>>=
+### DO NOT CHANGE THIS PART, BEGIN
+set.seed(123456)
+valSize <- floor(nrow(AmesTinyTrain)*0.2)
+valIndex <- sample(seq_len(nrow(AmesTinyTrain)), size = valSize)
+# actual training data
+AmesTinyActTrain <- AmesTinyTrain[-valIndex, ]
+AmesTinyActVal <- AmesTinyTrain[valIndex, ]
+### DO NOT CHANGE THIS PART, END
+@
+\item (2pts) For each of the 11 regression models, train on the remaining 80\% of the data,
+predict the validation data, and compute the validation MSE. For this, \textbf{create a new data frame \emph{modelQualitySingleVal} for these measures (trainMSE, valMSE) and plots these values. Identify which model gives the lowest validation MSE. Show the plots and the code for this part in the write-up.}
+\end{enumerate}
+\subsection{Cross validation for model selection (3 pts)}
+Cross-validation is an alternative to the single validation method. A useful package for such a task is
+\textbf{caret}. To generate folds, we can use \textbf{createFolds()}.
+<<>>=
+library(caret)
+# create 10 folds
+folds <- createFolds(AmesTinyTrain$SalePrice, k = 10)
+@
+Note that \textbf{folds} contains a list of vectors of indices.
+Since randomness is involved, you might get a different list. This is why you should also
+specify a random seed with \textbf{set.seed()} so you can replicate your analyses.
+\begin{enumerate}
+\item (2 pts) Use \textbf{createFolds()} to create a list folds to do a 5-fold cross validation to estimate the
+prediction error for log(SalePrice+1). Specifically, for each fold, for each model, train the model based on all observations except the ones in the fold and compute the validation MSE on data in that fold. You shold end up having a $11 \times 5$ matrix with rows corresponding the models and columns corresponding to the folds. \textbf{Show the code for this part in the write-up.}
+
+\item (1 pts) The CV-MSE is the average MSE over folds.
+\begin{align*}
+  \text{MSE}_{CV} = \frac{1}{\#\text{folds}} \sum_{i = 1}^{\#\text{folds}} \text{MSE on i-th fold}. 
+\end{align*}
+Calculte CV-MSE for each model. \textbf{Plot trainMSE, testMSE, singleValMSE, CV-MSEs again the number of features in each model in the same plot. Which model gives the lowest CV-MSE? Show the plots and the code for this part in the write-up.}
+\end{enumerate}
+
+\subsection{Fitting ridge regression (3 pts)}
+\begin{enumerate}
+\item (1 pts) Use ridge regression to predict log(SalePrice+1) with \underline{all predictors} in \textbf{AmesTiny} and regularization parameter $\lambda=1.0$. Make sure you dummify the factor variables and then scale the design matrix before fitting your model. \textbf{Show the code for this part in the write-up.}
+\item (2 pts) Varying the parameter $\lambda$ with ridge regression (Your $\lambda$ should contain $0.1$, $1000$ and at least 10 numbers in between), plot trainMSE and CV-MSEs of ridge against $\lambda$ in the same plot. \textbf{Which $\lambda$ achieves the minimum training MSE and CV-MSEs? Show the plots and the code for this part in the write-up.}
+\end{enumerate}
+
+
+\end{document}

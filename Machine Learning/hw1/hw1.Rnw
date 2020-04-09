@@ -1,0 +1,192 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath,amssymb,float,amsfonts,enumitem,tcolorbox}
+
+\include{macros}
+
+\title{STAT 154: Homework 1}
+\author{Release date: \textbf{Thursday, January 24}}
+\date{Due by: \textbf{6 PM, Wednesday, February 6}}
+
+\begin{document}
+
+\maketitle
+
+\section*{Submission instructions}
+It is a good idea to revisit your notes, slides and reading;
+and synthesize their main points BEFORE doing the
+homework.
+
+A .Rnw file corresponding to the homework is also
+uploaded for you. You may use that to write-up
+your solutions.
+Alternately, you can typeset your solutions in latex or
+submit neatly handwritten/scanned solutions.
+However for the parts that ask you to 
+implement/run some R code, your answer
+should look something like this (code followed by result):
+<<>>=
+myfun<- function(){
+show('this is a dummy function')
+}
+myfun()
+@
+Note that this is automatically generated if you use
+the R sweave environment.
+
+You need to submit the following:
+\begin{enumerate}
+\item A pdf of your write-up to ``HW1 write-up''.
+\item A Rmd or Rnw file, that has all your code, to ``HW1 code''.
+\end{enumerate}
+\emph{Ensure a proper submission to gradescope, otherwise it will
+not be graded. 
+Make use of the first lab to clear all your doubts regarding
+the submission/gradescope.}
+
+\newpage
+\section*{The honor code}
+
+\begin{enumerate}[label=(\alph*)]
+\item Please state the names of people who you worked with for this homework.
+You can also provide your comments about the homework here.
+\begin{tcolorbox}
+\vspace{20mm}
+\end{tcolorbox}
+
+\item  Please type/write the following sentences yourself and sign at the end. We want to make
+it \emph{extra} clear that nobody cheats even unintentionally.
+
+\emph{I hereby state that all of my solutions were entirely in my words and were written by me.
+I have not looked at another student’s solutions and I have fairly credited all external 
+sources in this write up.}
+\begin{tcolorbox}
+\vspace{20mm}
+\end{tcolorbox}
+
+\end{enumerate}
+
+\newpage
+This homework revisits several concepts from matrix algebra,
+besides doing some EDA with R, and, some concepts from the
+lectures.
+
+\section{A few basics (10*9 = 90 points)}
+Define the following quantities:
+\begin{enumerate}[label=(\alph*)]
+\item Linear space spanned by a given set of vectors $S = \{\vec a_1, \ldots, \vec a_k \}$
+\item Column space of a matrix
+\item Rank of a matrix.\\
+\end{enumerate}
+
+\noindent Answer the following:
+\begin{enumerate}[label=(\alph*)]
+\setcounter{enumi}{3}
+\item When is a square matrix called a singular matrix?
+\item When is a square matrix called an orthogonal matrix?
+\item When is a matrix said to have full column rank?\\
+\end{enumerate}
+
+\noindent Recall that a symmetric matrix $\mat A \in \real^{\dims \times \dims}$ is \textit{positive semi-definite} (PSD) if $\vec x\tp \mat A \vec x \geq 0$ for any $\vec x \in \real^\dims$. Now answer the following:
+\begin{enumerate}[label=(\alph*)]
+\setcounter{enumi}{6}
+\item Show that the matrix $\mat A = \vec a \vec a\tp$, where $\vec a \in \real^\dims$ is nonzero, is PSD.
+\item What is the rank of $\mat A = \vec a \vec a\tp$?
+\item For any matrix $\mat C\in \real^{\dims \times \dims}$, is the matrix $\mat C\mat C^\top$ a PSD matrix?
+\end{enumerate}
+
+\section{Eigendecomposition with R (10*6 = 60 points)}
+Consider the following matrices
+\begin{align*}
+\mathbf{X} = \begin{bmatrix}1 & 2 \\ 2 & 1\end{bmatrix}
+\quad\text{and}\quad
+\mathbf{Y} = \begin{bmatrix}-1/3 & 2/3 \\ 2/3 & -1/3 \end{bmatrix}
+\end{align*}
+
+\begin{enumerate}[label=(\alph*)] 
+\item Create these matrices in R and show them.
+\item Which of the two matrices are invertible and why? Find the inverse if it exists.
+How does one compute the inverse in R?
+\item Compute the eigenvalues and eigenvectors of the matrix $\mathbf{X}$. We expect you to be able to do this by hand but you may still use R for this part.
+\item Use the results of previous part to directly compute the eigenvalues 
+and eigenvectors of the matrix $\mathbf{Y}$.
+\item What are the eigenvalues and eigenvectors of $\mat X^2$? You may use
+direct computations or R to answer this question.
+\item Prove that if $(\lambda, v)$ denotes an eigenvalue-eigenvector pair for the matrix
+$\mat X$, then the pair $(\lambda^2, v)$ is a valid 
+eigenvalue-eigenvector pair for the matrix $\mat{X}^2$.
+\end{enumerate}
+
+
+\section{Understanding orthogonal projection (10*12+40 = 160 points)}
+In this problem, we will understand orthogonal projection in quite some detail.
+The length of the problem should not bother you as several parts are relativey easy.
+\begin{enumerate}[label=(\alph*)]
+\item For any vector $\mathbf{x} = [x_1, x_2, x_3]^\top \in \real^3$, what is its projection on the vector $[1, 0, 0]^\top$?
+\item What is the orthogonal projection of $\mathbf{x} = [x_1, x_2, x_3]^\top \in \real^3$ on 
+the subspace spanned by  the vectors $[1, 0, 0]^\top$  and $[0, 1, 0]^\top$?
+\item Write the projection matrices in the previous two cases.
+\item Create the previous projection matrices in R and compute the projections of
+two random vectors whose entries are drawn independently from the uniform distribution on $[0, 1]$. Do not forget to set the seed.
+\item Let's make the problem more general. Write the expression for the orthogonal projection of a vector $\vec x \in \real^\dims$ along any given vector $\vec a \in \real^\dims$.
+What is the projection matrix in this case?
+\item Create a function in R that takes in input two vectors $\vec x, \vec a$ and computes
+the projection from previous part. Call the function with $\vec x = [3, 2, -1]^\top$
+and $\vec a = [1, 0, 1]^\top$.
+\item Given two orthogonal vectors $\vec{a}_1$ and $\vec{a}_2$ in $\real^\dims$, what is the orthognal projection of a generic vector $\vec x$ on to the subspace spanned by these two vectors?
+\item Now let's make the problem a bit more challenging. Suppose that the two vectors
+$\vec{a}_1$ and $\vec{a}_2$ are not orthogonal. How will you compute the orthogonal projection
+of $\vec x$ in this case? It may be useful to revise Gram Schmidt Orthogonalization.
+\item\label{eq:gs} Implement your method in the previous part in R for 
+$\vec x = [3, 2, -1]^\top$
+and $\vec a_1 =  [1, 0, 1]^\top$ and $\vec a_2 = [1, -1, 0]^\top$.
+\item Can you generalize the answer from previous part to the case to compute the
+orthogonal projection along a k-dimensional subspace spanned by the vectors $\vec a_1, \ldots, \vec a_k$ which need not be orthogonal?
+\item \textbf{Challenging (40 points):} Define the matrix 
+\begin{align*}
+  \mat A = [\vec a_1, \ldots, \vec a_k] \in \real^{\dims \times k}
+\end{align*}
+such that the columns are independent. 
+Then the orthogonal projection of any vector $\vec x \in \real^\dims$ 
+onto the k-dimensional subspace spanned by the vectors $\vec a_1, \ldots, \vec a_k$ is given by
+\begin{align}
+\mat A (\mat A^\top \mat A)^{-1}\mat A^\top \vec x.
+\label{eq:projection}
+\end{align}
+\emph{Hint:} Consider the least squares problem
+\begin{align*}
+\min_{y}\Vert \mat A \vec y - \vec x \Vert_2^2.
+\end{align*}
+\item Compute the projection for $\vec x = [3, 2, -1]^\top$ on the space spanned by the vectors $\vec a_1~=~[1, 0, 1]^\top$ and $\vec a_2 = [1, -1, 0]^\top$ using the expression in previous part using R. Compare it with your answer from part~\ref{eq:gs}.
+\item How does the expression in the equation~\eqref{eq:projection} simplify if the vectors $\vec a_1, \ldots, \vec a_k$ are orthogonal?
+\end{enumerate}
+
+
+\section{Exploring a dataset with R (10*8 + 2*20 = 120 points)}
+ISL (with applications in R): Chapter 2, Problem 10 (Boston dataset)
+After parts (a)-(h), please answer the following parts that
+try to emphasize a few aspects of the PQRS framework:
+\begin{itemize}
+\item[(i)] What do you think defines the population for this dataset?
+\item[(j)] Can you define a prediction problem that you may use this dataset
+for? Describe it in the framing of the three-circle representation
+discussed in the class.
+\end{itemize}
+
+\section{True or false (10*7 = 70 points)}
+Examine whether the following statements are true or false and provide
+one line justification.
+\begin{enumerate}[label=(\alph*)]
+\item Cross validation is a powerful tool to select hyper-parameters in several
+machine learning tasks.
+\item Cross validation error is always a good proxy for the prediction error.
+\item Vanilla cross validation is a good idea for time-series data.
+\item For a machine learning problem, exploratory data analysis by itself is 
+generally sufficient to determine the complete relevance of the dataset for the problem.
+\item Data collection process usually has no-to-little 
+influence on the outcome of a prediction problem.
+\item For a model to make meaningful predictions on the future data, 
+we need some similarity between the  representative data that was used to build 
+the model and the future data.
+\item Prediction is often the end goal of a machine learning task.
+\end{enumerate}
+\end{document}

@@ -1,0 +1,319 @@
+---
+title: "PH245_HW4"
+output: pdf_document
+---
+
+
+#Xiaoying Liu
+#27038176
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# Load Data 
+women = read.table(file="Data-HW4-track-women.txt", 
+                   header=FALSE, 
+                   quote="", 
+                   sep="\t"
+                  )
+men   = read.table(file="Data-HW4-track-men.txt", 
+                   header=FALSE, 
+                   quote="", 
+                   sep=""
+                  )
+
+colnames(women) = c("Country", "100m", "200m", "400m", "800m", "1500m", "3000m", "Marathon")
+colnames(men)   = c("Country", "100m", "200m", "400m", "800m", "1500m", "5000m", "10000m", "Marathon")
+
+head(women)
+head(men)
+```
+
+#1A
+```{r}
+# Standardize data
+center      = function(lst) {lst - mean(lst)}
+standardize = function(lst) {center(lst) / sd(lst)}
+
+standardizedWomen = apply(women[,-1], 2, center)
+standardizedMen   = apply(men[,-1], 2, center)
+
+# correlations among all variables
+sampleCorrelationMatrix = cor(standardizedWomen)
+sampleCorrelationMatrix
+```
+
+
+```{r}
+#eigenvalues and vectors of the correlation matrix 
+
+sampleEig = eigen(sampleCorrelationMatrix)
+sampleEig
+```
+
+#1B
+```{r}
+# The first two eigenvalues are the largest and thus are the
+# greatest proportion of the total variance
+
+firstTwoPrincipalComponents = sampleEig$vectors[,1:2]
+rownames(firstTwoPrincipalComponents) = colnames(standardizedWomen)
+firstTwoPrincipalComponents
+
+proportionOfTotalVariance = {
+    sum(sampleEig$values[1:2]) / sum(sampleEig$values)
+}
+proportionOfTotalVariance
+
+```
+
+
+#1C
+```{r}
+# Interpreting the two pc
+pcaFit = princomp(standardizedWomen)
+
+#correlation between the original variables and PCs 
+cor(x=standardizedWomen, y=pcaFit$scores)[,1:2]
+
+```
+
+
+```{r}
+#PC1 correlates strongly with marathon variable and thus likely relies on the Marathon variable. 
+#If Marathon time increases, it is likely that the times for the other race distances also increases.
+
+#In PC2, Marathon has almost no correlation at all. 
+#since our principal components are orthagonal, 
+#so things that are highly correlated with one should (in theory) be similarly
+#uncorrelated with the other pcs. With PC2, 
+#the strongest correlation is from the 400m race,as the 400m time increases, other variables correlated
+#with PC2 are also likely to varying degrees to increase, based on how strong of that correlation.
+
+pcaFit$loadings
+
+
+```
+
+
+#1D
+```{r}
+# Adding country names to scores
+PCWomen = cbind(women[,1], as.data.frame(pcaFit$scores))
+colnames(PCWomen)[1] = "Country"
+head(PCWomen)
+
+# Sorting countries based only on PC1
+dimReducedWomen = PCWomen[,1:2]
+head(dimReducedWomen)
+dimReducedWomenOrdered = dimReducedWomen[order(-dimReducedWomen[,2]),]
+head(dimReducedWomenOrdered)
+
+#we get countries that would intuitively be the best in the world at track.
+```
+
+#1E
+```{r}
+# Converting to time to m/s
+
+womenSpeeds = cbind(
+    100/women[,2],
+    200/women[,3],
+    400/women[,4],
+    800/(women[,5]*60),
+    1500/(women[,6]*60),
+    3000/(women[,7]*60),
+    42195/(women[,8]*60)
+)
+colnames(womenSpeeds) = c("100m", "200m", "400m", "800m", "1500m", "3000m", "Marathon")
+head(womenSpeeds)
+
+standardizedWomenSpeeds = apply(womenSpeeds, 2, center)
+head(standardizedWomenSpeeds)
+
+
+
+# Running PCA on the new dataset
+pcaFitWomenSpeeds = princomp(standardizedWomenSpeeds)
+
+#correlation between the original variables and PCs 
+cor(x=standardizedWomen, y=pcaFitWomenSpeeds$scores)[,1:2]
+
+pcaFitWomenSpeeds$loadings
+summary(pcaFitWomenSpeeds)
+
+
+
+
+# Adding country names to scores
+PCWomenSpeeds = cbind(women[,1], as.data.frame(pcaFitWomenSpeeds$scores))
+colnames(PCWomenSpeeds)[1] = "Country"
+head(PCWomenSpeeds)
+
+# Sorting countries based only on PC1
+dimReducedWomenSpeeds = PCWomenSpeeds[,1:2]
+head(dimReducedWomenSpeeds)
+dimReducedWomenSpeedsOrdered = {
+    dimReducedWomenSpeeds[order(dimReducedWomenSpeeds[,2]),]
+}
+head(dimReducedWomenSpeedsOrdered)
+
+
+
+#possibly due to our shift in units, standardization by switching everything to m/s), componenents are quite different. 
+#we still acheived roughly the same results, because the first two PCs account for roughly the same variation in the dataset, in subtly different ways.
+
+```
+
+
+#1F
+```{r}
+# Running PCA on the new dataset
+pcaFitMen = princomp(standardizedMen)
+
+# Examining the correlation between the original variables and PCs 
+cor(x=standardizedMen, y=pcaFitMen$scores)[,1:2]
+
+# Examining loadings and proportions of variance
+pcaFitMen$loadings
+summary(pcaFitMen)
+
+# Adding country names to scores
+PCMen = cbind(men[,1], as.data.frame(pcaFitMen$scores))
+colnames(PCMen)[1] = "Country"
+head(PCMen)
+
+# Sorting countries based only on PC1
+dimReducedMen = PCMen[,1:2]
+head(dimReducedMen)
+dimReducedMenOrdered = {
+    dimReducedMen[order(-dimReducedMen[,2]),]
+}
+head(dimReducedMenOrdered)
+
+#To conclude, it seems like our results agree pretty closely.with our women's analysis. 
+#The PC's relations to each of the original variables is actually fairly similar 
+#across genders.
+```
+
+
+
+#2A
+```{r}
+# Load data
+airPollution = read.table(file="Data-HW4-pollution.txt", 
+                          header=FALSE,
+                          quote="",
+                          sep=""                         
+                         )
+colnames(airPollution) = c("Wind", "SolarRadiation", "CO", 
+                           "NO", "NO2", "O3", "HC")
+head(airPollution)
+
+# covariance matrix 
+
+airPollutionCovariance = cor(airPollution)
+```
+
+
+#2B
+```{r}
+# Obtaining principal component solution
+
+# 1.pectral decomposition
+decomposition = eigen(airPollutionCovariance)
+decomposition
+
+# 2. Estimating Communality
+rootOfEigenvals = decomposition$values ** .5
+
+L1 = as.data.frame( decomposition$vectors[,1] * rootOfEigenvals[1] )
+L2 = as.data.frame( decomposition$vectors[,2] * rootOfEigenvals[2] )
+
+colnames(L1) = ''
+colnames(L2) = ''
+
+rownames(L1) = colnames(airPollution)
+rownames(L2) = colnames(airPollution)
+
+print("L1:")
+round(L1, 3)
+print("L2:")
+round(L2, 3)
+
+# For m=1
+communalityM1 = round(L1^2, 3)
+print("Communality - M=1:")
+communalityM1
+
+# For m=2
+communalityM2 = round(L1^2 + L2^2, 3)
+print("Communality - M=2:")
+communalityM2
+
+# 3. Estimating Specific Variation (psi)
+
+# For m=1
+specificVarianceM1 = round(1 - L1^2, 3)
+print("Specific Variance - M=1:")
+specificVarianceM1
+
+# For m=2
+specificVarianceM2 = round(1 - L1^2 - L2^2, 3)
+print("Specific Variance - M=2:")
+specificVarianceM2
+
+
+# our Specific Variance drops in almost all of the common variables when adding 
+#ta second common factor. This is because the second common factor is 
+#accounting for more of the total variance and since it is zero-sum, the additional 
+#variance is being "taken" from previous variance and assigned to the second common factor.
+
+
+```
+
+
+#2C
+```{r}
+# Finding proportion of variation for one-factor model - m=1
+proportionalVarianceM1 = sum(L1^2) / length(L1[,1])
+proportionalVarianceM1
+
+# Finding proportion of variation for two-factor model - m=2
+proportionalVarianceM2 = {
+    proportionalVarianceM1 + (sum(L2^2) / length(L2[,1]))
+}
+
+proportionalVarianceM2
+
+
+
+#our two-factor model accounts for more variation. 
+#This relates back to the end of 2B because as specific variation goes down, 
+#the total amount of variation being accounted for by our factors is going up.
+```
+
+#2D
+```{r}
+# Performing varimax rotation
+
+rotation = varimax(x=as.matrix(cbind(L1, L2)), normalize=FALSE)
+rotation
+
+
+
+#After scaling the loadings by dividing themby their corresponding communality and maximizing this quantity, 
+#In Factor 1's loadings, HC, NO2, NO, and CO have fairly significant (>.5) values.
+#This means Factor 1 is primarily a measure of these variables and as each of these 
+#variables increase, so do the other 3. 
+#In Factor 2, the most important significant values (>.5) come from O3 and Solar Radiation 
+#which means Factor 2 is primarily a measure of these variables.
+#These variables also thus are associated with each other and a second 
+#underlying common factor could be investigated about the relationship 
+#between Ozone and Solar Radiation. It also makes sense from domain knowledge, 
+#that increased sunlight and UV radiation is responsible for the creation
+#of ozone throughout the atmosphere.
+```
+

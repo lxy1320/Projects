@@ -1,0 +1,106 @@
+---
+title: "data"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+getwd()
+setwd("/Users/xiaoyingliu/desktop")
+data=read.csv('data.csv')
+library(ggplot2)
+
+```
+
+
+
+#Awareness of product X for phase IV. (based on question 1,2,5,6)
+```{r}
+table(data['q1_1'])
+#heard of X 129, not heard of X 24, percentage 0.84
+table(data['q1_2'])
+#heard of Y 146, not heard of y 7, percentage  0.95
+
+
+table(data['q1_9'])
+#there are totaling 3 peoople who never heard of product x and product y.We extract these 3 people for further examination as below. 
+data[which(data['q1_9']==1),]#36,108,112, all three of them are taking product Y,but never heard of either. Possible guesses are they are taken care by their family, thus not aware of any of these medicines. Such patients are recorded as extreme users. 
+
+
+#70 of patients are taking  productX , 74 of patients are taking product Y,barplots below
+barplot(table(data$q2b))
+#subset all Y users and look int durations of taking meds
+y_user=data[which(data['q2b']=='Product Y'),]
+summary(y_user$q2c)# from 1 month to 106 month, median lies in 12.5 month, mean 17.65 months
+boxplot(y_user$q2c)
+
+#subset all X users and look into durations of taking meds
+x_user=data[which(data['q2b']=='Product X'),]
+summary(x_user$q2c)
+#from 1 month to 42 months, median lies in 5.5 months, mean 7.3 months.
+##############quantile plot for x and y parallel to each other  will show data##########3
+boxplot(x_user$q2c)
+
+
+#satisfaction for current treatment
+table(y_user$q5)#4,6,12,22,30,if we take satisfaction and extrmeely satisfctaion as a measurement, satisfaction percetage is 52/74=0.703
+table(x_user$q5)#2,4,13,20,31.Same measurements here. satisfaction percentage=51/70=0.72
+#Total  number of users are similar, thus this is a reasonable to conclude that overall,X product user has a higher satisfaction rate. 
+
+#willlingness to change treatment
+table(y_user$q6) #take regularly and all the time as a measure, willingness to change rate is 0.18
+table(x_user$q6) #take same measurementes here, willingness to change rate is 0.3. 
+#We can conclude Product X user has a higher willingness rate to change treatment. 
+
+
+#importnace rank A:slow down cancer progression. B. Have manageable effects. C. Improve my quality of life  D. Are easy/convenient to take. #E.Have low out-of pocket cost
+#We decide to use mean score of ranking for each option to produce the importance rank
+#firstly subset all users taking med(exclusive of those who do not take treatments at all)
+users=data[which(data['q2a']=='Yes'),]
+mean(users$q3_A)#4.97222  
+mean(users$q3_B)#4.6875
+mean(users$q3_C)#4.72
+mean(users$q3_D)#4.14
+mean(users$q3_E)#4.36
+
+#Rankings are as below(high to low). A-C-B-E-D. Top 3 factors patients care about are slow down cancer progression, Improve quality of life,Have mangeable effects. The rankings are likely to relate to the phase of breast cancer( from domain knowledege), such insights will be extremely helpful for introducing suitable treatments to patients at a specific stage. 
+
+
+#effectiveness/strongness. A:slow down cancer progression. B. Have manageable effects. C. Improve my quality of life  D. Are easy/convenient to take. #E.Have low out-of pocket cost
+#We use mean score of ranking for each option to produce importance rank. 
+c(mean(x_user$q4_A),mean(y_user$q4_A)) # y rank higher with respect to A
+c(mean(x_user$q4_B),mean(y_user$q4_B))  #X rank higher 
+c(mean(x_user$q4_C),mean(y_user$q4_C)) # X rank higher
+c(mean(x_user$q4_D),mean(y_user$q4_D)) # X rank higher
+c(mean(x_user$q4_E),mean(y_user$q4_E))#Y  rank higher
+
+#To concludex is surely an effctiven treament in regards to manageable effects, improving quality of life and convenient to take. However, it seems that Y outweigh X for slowing down cancer progression and have a low out of pocket cost.
+
+#How patients might kwnow about new treament. A. Doctor's advice. B. Printed materials given by doctors. C. Family and Friends. D.Other people who have breast cancer. E. The internet. F.Information from advocacy organization. 
+q7=c(mean(users$q7_A),
+mean(users$q7_B),
+mean(users$q7_C),
+mean(users$q7_D),
+mean(users$q7_E),
+mean(users$q7_F))
+q7
+#Rankings(from high to low): A--D--E--B--F--C. To conclude, The most common information channel would be doctor's advice or other people who have breast cancer. Surprisingly, internet also acts as a major source of new treatment. 
+
+#motivation to talk to physician about a medication. A:Learning that breast cancer has progressed. B.Find out that the medication is covered by insurance. C. learn about a new medication better as a treatment. D. learn more about what happens to people who have breast cancer. E.Seeing advertisment to treat breast cancer. F. A recommendation form another patient with breast cancer. 
+q8=c(mean(users$q8_A),
+mean(users$q8_B),
+mean(users$q8_C),
+mean(users$q8_D),
+mean(users$q8_E),
+mean(users$q8_F))
+q8
+#Rankings(from high to low): E--D--F--B--C--A. To conclude, It seems that patients tends to talk about a new treatment when they hear from other poeple talking about it. One insight is that they might be ignorant of their own situation and be more optimistic when hearing stories from other people. 
+
+
+```
+

@@ -1,0 +1,352 @@
+---
+title: "Project1"
+author: "Xiaoying Liu"
+date: "12/16/2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(mclust)
+library(factoextra)
+library(gridExtra)
+library(RColorBrewer)
+
+```
+
+#Abstract
+The current analysis is based on a case study conducted by Tolle et al. on a wireless sensor network named "Macroscope" in the redwood forest. In the case study, the researchers adopted a creative methodology and deployed the sensor network to monitor the microclimate surrouding a redwood tree, which was not feasible with traditional measurement methodologies.
+
+
+Base on the raw data collected by the research team, we conduct further statistical analysis through pre-processing, visualization, and data exploration. Our analysis verified some of the findings on the microclimate of redwood tree, in addition, upon analyzing data, we provide possible suggestions of adjustments that can be employed in future data collection methods, as well as possible improvements on the illustrations in the pivotal paper.
+
+
+#Introduction
+The research was conducted by scholars from Computer Science Division and Department of Intergrative Biology at University of California, Berkeley, and researchers from Intel Research Berkeley. In the research, the researchers designed a reliable deployment methodology of monitoring dynamic and cross-spatial biological features, and conducted a rigorous experiment with the new method. In the experiment, a redwood tree in redwood forest in Sonoma, California was selected to be the target of measurement. The time period of the experiement is chosen to nearly 44 days during early summer. 
+
+#Data
+##1.Data Collection
+Data in the case study is gathered from a 70-meter tall tree for 44 days. A data collection framework including TinyOS and TASK software is implemented. The time period of the experiement is chosen to nearly 44 days during early summer, with a periodiocity of every 5 minutes, to capture most dynamic microclimant variation.
+
+
+The data collected was identified by two identifier, the label of nodes in the network as *nodeid* and the time the record took place as *epoch*. In the data collected, we are mainly interesed in four variables, tempertaure, humidity, incident PAR (photosynthetically active solar radiation) and reflected PAR. Other variables include voltage readings of the mote sensors, the time of the corresponding record, and the location information of sensors' placement.
+
+#2.Data Cleaning
+##Consisitencty check
+By plotting the histograms of each varibles in two data file, we first find out that the magnitude of variable *Voltage* are completely different for the two datasets. In order to find the mapping relation between voltages from two data sets, we look into 2 data sets and identified same entries using the two identifiers. With the duplicated data, we can now observe how the same data was entered differently. We noticed that they are inversely proportinal to each other.
+
+
+##Missing Values
+After combining LOG and NET data, we now roughly look at the combined dataset and find out that missing values appear in the four variables of interest. And all missing values are observed to be present spontaneously across the four variables. One possible cause might be the nature of data collection hardware. Once the device failed to record at an epoch, all data will be missing for this entry. Furthermore, most of missing values are located in *epoch* 756 to 1770. As a result, we removed all rows with missing values in the dataset. In total the dataset had 8852 missing values and we now obtained a dataset with 310,179 entries.
+
+
+##Outlier rejection
+From the case study we know the motes are numbered from 0 to 200. However, we detected one incorrect entry with *nodeid* 65,535. We then deleted this enty. Since there is only one entry with this error, we don't expect there would be any impact on the data distribution. In addition, according to paper, the researchers stated that the errorous voltage readings were closely linked to wrong readings in other variables. in order to avoid potential influence on our following analysis, we decided to remove voltages which is less than 2.4v or larger than 3v, such measurements totaling 33,123 entries. We now obtained a dataset with 277,056 entries.
+
+As for humidity, at the begginning of our analysis, we found out that negative humidity readings existed, which violated the physical principles. After above removal of the entries, however, we found these negative reading had already been removed as well. Possible cause could be that negative humidity reading might be relevant to extreme voltage, indicating failing mote. Furthermore, by plotting the scatterplot of all humidity readings across the dataset, we identified that there are 3 other outliers at *nodeid* 118 *epoch* 8717- 8719. The 3 humidity outliers all have value of 114.894, which largely exceed the rest of the dataset whose maximum was merely 104. We then removed the three outliers. 
+
+
+#3.Data Exploration
+An important discovery of the dataset, when we made a histogram of the observations across *epoch*, was that the number of observations decreased sharply along time at varying rates. We want to look into a reasonable time period to ensure most variation of the nodes in terms of their heights, while the number of observations to be relatively stable.
+
+For epoch. we selected epoch 0-2000 and epoch 3000-8000. Firstly, we observed the data points after epoch 2000 decreases sharply and the decrease doesn't slow down until around epoch 2800 to an extend that data points almost stabalize. We therefore determined the first segment to be epoch 0 to 2000, since most nodes of smaller heights still preserves in this segment. Secondly, after epoch 10250, we lost considerable number of datapoints again, with only very limited number of nodes still recording data. We selected epoch 3000 to 8000 as our second segment, since this segment has adequate number of observations, though their distribution was heavily concentrated in higher nodes. We decided to conduct analysis seperately on these two epoch periods, based on the different purposes of our analysis. In addition, we disgarded the last epoch periods. And we need to select certain nodes from the dataset, in 3000-8000, we select nodes which has the most observations for plotting. In the mean time, these observations better have more location variations to avoid confounding factors. Eventually we selected *nodeid* 14, 46, 110, 118, and 119 as our top 5 nodes to do pairwise plots. 
+
+```{r echo=FALSE,fig=TRUE,results='hide',warning=FALSE,fig.height=2,fig.width=3}
+setwd('/Users/xiaoyingliu/Desktop')
+data_log <- read.csv("sonoma-data-log.csv")
+data_net <- read.csv("sonoma-data-net.csv")
+data_all_original <- read.csv("sonoma-data-all.csv")
+
+data_mote <- read.table("mote-location-data.txt", header = TRUE)
+
+
+# REMOVE DUPLICATES
+
+dupe <- data_all_original[,c("epoch", "nodeid")]
+
+data_duplicate <- data_all_original[duplicated(dupe),]
+
+nrow(data_duplicate)
+# data with no duplicate #
+#                        #
+data_all <- data_all_original[-which(duplicated(dupe)),]
+#                        #
+# data with no duplicate #
+
+
+data_net[which(data_net$epoch == 2841),]
+data_log[which(data_log$epoch == 2841),]
+
+data_all <- data_all[!is.na(data_all$humidity),]
+
+nrow(data_all)
+
+summary(data_all$depth)
+
+summary(data_all$nodeid)
+
+nrow(data_all[which(data_all$nodeid ==65535 ),])
+
+# REMOVE NODEID=65535
+data_all <- data_all[-which(data_all$nodeid ==65535 ),]
+
+
+# Convert voltage to be 0-3
+data_all[which(data_all$voltage > 4), "voltage"] <- 593.92 / data_all[which(data_all$voltage > 4), "voltage"]
+
+# REMOVE VOLTAGE <2.4 OR >3
+data_all <- data_all[-which(data_all$voltage >3),]
+data_all <- data_all[-which(data_all$voltage < 2.4),]
+
+
+# COMBINE MOTE-LOCATION
+names(data_mote) <- c("nodeid", "Height", "Direc", "Dist", "Tree")
+
+data_all <- left_join(data_all, data_mote, by = "nodeid")
+
+#### humidity outlier
+
+
+summary(data_all$humidity)
+
+data_all <- data_all[-which(data_all$humidity > 110),]
+
+
+plot(data_all$hamatop)
+
+```
+
+
+We will do a series of plots: temperature over epoch.(Refer to Fig) . humid-epoch with temp(Refer to Fig), humid-temp(top 5 nodes, 5 plots,refer to Fig). humid-hamatop/hamabot(grid-wise, with height as labels,Refer to Fig)
+
+```{r echo=FALSE,fig=TRUE,results='hide',warning=FALSE,fig.height=2,fig.width=3}
+
+
+######################### data_sub ############
+data_all <- arrange(data_all, epoch)
+which(data_all$epoch > 8000 & data_all$epoch < 8005)
+
+# 0 - 2500
+data_sub1 <- data_all[1:132097,]
+# 4000 - 8000
+data_sub2 <- data_all[169357:242013,]
+
+table(data_sub2$nodeid)
+
+data_all[which(data_all$nodeid %in% c(46, 42, 118, 119, 110)),]
+data_sub3 <- data_all[which(data_all$nodeid %in% c(46, 42, 118, 119, 110)),]
+
+# FIGURE2 humidity and time
+
+ggplot(data_all, aes(x = epoch, y = humidity, color = humid_temp)) +
+  geom_line() +
+  scale_color_gradient(low = "lightblue", high = "navyblue")
+
+# FIGURE 3 HUMID AND TEMP
+
+ggplot(data_sub1, aes(x = humidity, y = humid_temp)) +
+  geom_point(size = 0.1)
+
+# therefore pick 5 motes
+
+table(data_sub1$nodeid)
+
+# pick 118(63.5) 20(12.7) 107(28.4) 23(26.6) 11(49.4)
+
+
+data_118et <- data_sub1[which(data_sub1$nodeid %in% c(118, 20, 107, 23, 11)),]
+
+#Figure 4
+ggplot(data_118et, aes(x = humidity, y = humid_temp, color = as.factor(nodeid))) +
+  geom_point(size = 0.5) + 
+  facet_grid(~ as.factor(nodeid))
+
+
+# FIGURE 5
+
+ggplot(data_sub1, aes(x = humidity, y = hamatop, color = Height)) +
+  geom_point()
+
+ggplot(data_sub1, aes(x = humid_temp, y = log(hamatop + 1), color = as.factor(Height))) +
+  geom_point() +
+  ylim(c(5, 12))
+
+ggplot(data_sub1, aes(x = humid_temp, y = log(hamabot+1), color = as.factor(Height))) +
+  geom_point(size = 0.05) +
+  ylim(c(5,10))
+#### NO sense
+#ggplot(data = data_sub1, aes(x = Height, y = log(hamatop+1))) +
+ # geom_point()
+```
+
+We find out that height, as a predictor is associated with incident PAR. Incident PAR is proportional to corresponding sensor height. Such phenomenon indicates that higher portion of redwood tree would accept higher PAR in general. 
+
+
+we performed PCA(Refer to Fig, scree-plot). From the PCA output, we find out that with the first 2 PCs, the data could be well explained. Thus low dimensional representation is feasible for this dataset. 
+
+```{r echo=FALSE,fig=TRUE,results='hide',warning=FALSE,fig.height=2,fig.width=3}
+##### FIGURE 6 PCA
+pca <- prcomp(data_all[,c(7,8,10,11)], scale. = TRUE)
+
+fviz_eig(pca)
+
+######## figure 7 time height value
+data_all <- mutate(data_all, day = epoch / 288)
+
+# days
+plot_humidity <- ggplot(data=data_all, aes(x = day, y = humidity, color = Height)) +
+  geom_point(size = 0.1,show.legend = FALSE)
+
+plot_humidity <- ggplot(data=data_all, aes(x = epoch, y = humidity, color = Height)) +
+  geom_point(size = 0.1,show.legend = FALSE)
+
+plot_temp <- ggplot(data=data_all, aes(x = epoch, y = humid_temp,color = Height)) + geom_point(size = 0.1,show.legend = FALSE)
+
+plot_hamatop <- ggplot(data=data_all, aes(x = epoch, y = hamatop, color = Height)) + geom_point(size = 0.1, show.legend = FALSE)
+#change dramatically
+
+plot_hamabot <- ggplot(data=data_all, aes(x = epoch, y = hamabot,color = Height)) + geom_point(size = 0.1,show.legend = FALSE)
+
+grid.arrange(plot_humidity, plot_temp, plot_hamatop, plot_hamabot, nrow = 4)
+
+
+
+```
+
+#Findings
+
+```{r echo=FALSE,fig=TRUE,results='hide',warning=FALSE,fig.height=2,fig.width=3}
+
+#### FIGURE 1 ######
+data_all_allHeight <- data_all[!is.na(data_all$Height),]
+
+# number of observation ~ time , height
+ggplot(data = data_all_allHeight, aes(x = epoch, color = as.factor(Height), fill = as.factor(Height))) +
+  geom_histogram(binwidth = 250) 
+
+
+ggplot(data = data_all) +
+  geom_histogram(binwidth = 250, aes(x = epoch, fill = Direc)) 
+
+```
+##1st Finding
+Data collection are highly related to how the sensor system are deployed. In the paper, the researchers addressed their concern about the yield rate of the notes. It is argued to be natural that motes get lost during the process of collection. In our analysis of the amount of readings as epoch increases, we found out that the amount of data collected decreased over time. Furthermore, the pattern of different motes exhibit disparities.
+
+In the figure below we visualized the amount of data across epochs. It is not difficult to see the data drops steadily but at varying rates. We further colored the plot by height, attempting to see whether the height placement of the motes will make them easier to get lost. From the plot we saw a clear pattern that the motes that were lower have a higher rate of not reporting readings. This provides insights for the researchers that they may want to improve the set up for motes at lower height or increase the number of these motes in the network.
+
+
+
+##2nd Finding
+We further went to analyze if the data loss is related to the direction of how the motes were placed.Directions include W,SW,WSW,E etc. We produced a similar histogram but colored it by the direction of readings. We witnessed that mote of some directions became completely missing in the latter half of the experiment. This adds to the suggestion that the researchers can strengthen the sensor network by placing more motes to these direction.
+
+##3rd Finding
+In analyzing the relationship between temperature and humidity, we observed an overall negative correlation of these two variables. Although it was difficult to conclude if the relation is linear, we can still tell as the temperature appears low, the humidity is more likely to be higher. We also examined different nodes to validates this finding in case that this is only an accidental trend for one node. The analysis confirmed that this negative correlation exists.
+
+
+
+```{r echo=FALSE,fig=TRUE,results='hide',warning=FALSE,fig.height=2,fig.width=3}
+# FIGURE GRAPHIC CRITIQUES
+
+# (1) transfromation
+
+hist(data_all$hamatop)
+
+ggplot(data_all) +
+  geom_histogram(aes(x = log(hamatop), y = (..count..)/sum(..count..)), color = "black", fill = "darkblue") +
+  theme_bw()
+#	Removed 155031 rows containing non-finite values (stat_bin).
+
+ggplot(data_all) +
+  geom_histogram(aes(x = log(hamabot), y = (..count..)/sum(..count..)), color = "black", fill = "darkblue") +
+  theme_bw()
+#	Removed 237406 rows containing non-finite values (stat_bin).
+
+
+## with height
+ggplot(data_all) +
+  geom_histogram(aes(x = log(hamabot), y = (..count..)/sum(..count..), fill = as.factor(Height))) +
+  theme_bw()
+#	Removed 237406 rows containing non-finite values (stat_bin).
+```
+
+
+```{r echo=FALSE,fig=TRUE,results='hide',warning=FALSE,fig.height=2,fig.width=3}
+# (d)
+log_yield <- table(data_log$epoch) / 200
+net_yield <- table(data_net$epoch) / 200
+
+data_yield <- data.frame(matrix(data = c(log_yield, net_yield)))
+data_yield <- cbind(data_yield, c(rep("log", 12634), rep("net", 7477)))
+names(data_yield) <- c("yield", "group")
+
+
+ggplot(data = data_yield, aes(x = yield, fill = as.factor(group))) +
+  geom_histogram(position = "dodge")
+
+
+x = 2:12635
+summary(data_net$hamatop)
+data_all[which(data_all$epoch == 12635), ]
+
+log(data_all$hamatop + 1)
+
+data_all <- mutate(data_all, hamatop_PPFD = hamatop / 54)
+
+
+data_all$Height
+
+
+table(data_all$nodeid)
+
+v1 <- table(cut(data_all[which(data_all$Height >= 15 & data_all$Height <=26), ]$hamatop_PPFD, breaks = c(0,250,500,750,1000,1250,1500,1750,2000,2250)))
+
+v2  <- table(cut(data_all[which(data_all$Height > 26 & data_all$Height <=37), ]$hamatop_PPFD, breaks = c(0,250,500,750,1000,1250,1500,1750,2000,2250)))
+
+v3  <- table(cut(data_all[which(data_all$Height > 37 & data_all$Height <=48), ]$hamatop_PPFD, breaks = c(0,250,500,750,1000,1250,1500,1750,2000,2250)))
+
+v4  <- table(cut(data_all[which(data_all$Height > 48 & data_all$Height <=59), ]$hamatop_PPFD, breaks = c(0,250,500,750,1000,1250,1500,1750,2000,2250)))
+
+v5  <- table(cut(data_all[which(data_all$Height > 59 & data_all$Height <=70), ]$hamatop_PPFD, breaks = c(0,250,500,750,1000,1250,1500,1750,2000,2250)))
+
+v6 <- matrix(c(v1,v2,v3,v4,v5), ncol = 9, byrow = TRUE)
+v6 <- v6*100
+
+colnames(v6) <- c("0-250","250-500","500-750","750-1000","1000-1250","1250-1500","1500-1750","1750-2000","2000-2250")
+
+
+v6 <- as.matrix(v6)
+heatmap(v6, scale="row", Colv = NA, Rowv = NA, cexRow=1.5, labRow=paste("height", rownames(data),sep=""), col= colorRampPalette(brewer.pal(8, "Blues"))(25))
+
+
+```
+
+#Conclusion
+From the perspective of data cleaning, data collection is crucial to data quality, we discovered that data quality is affected becasue of battery failure. Lack of data dictionary cost more time to do data cleaning. In addition, since the dataset are large, we believe that hidden informative findings still exist, that if we are equipped with rich domain knowlegde, we could have discovered more. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

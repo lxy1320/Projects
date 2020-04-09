@@ -1,0 +1,206 @@
+---
+title: "Stat154_hw1_coding"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#2.Eigendecomposition with R
+#(a)
+x=cbind(c(1,2),c(2,1))
+x
+y=cbind(c(-1/3,2/3),c(2/3,-1/3))
+y
+#(b)
+det(x)
+det(y)
+#both determinant are nonzero, thus both matrixes are invertible
+#(c)
+x_ev=eigen(x)
+x_vectors=x_ev$vectors
+x_values=x_ev$values
+x_values
+x_vectors
+
+#(d)
+y_values=(x_values-2)*(1/3)
+y_values
+
+
+#(e)
+x_sq_ev=eigen(x%*%x)
+x_sq_ev$values
+x_sq_ev$vectors
+
+#(f)
+#see written part.
+```
+
+
+
+
+```{r}
+#3.
+#(d)
+set.seed(123)
+A=cbind(c(1,0,0),c(0,0,0),c(0,0,0))
+B=cbind(c(1,0,0),c(0,1,0),c(0,0,0))
+#compute the projections of 2 RVs with its entries unif(0,1)
+#A%*%v1
+#B%*%v1
+#A%*%v2
+#B%*%v2
+
+
+
+#(f)
+proj=function(x,a){
+  projection=((x%*%a)/(a%*%a))%*%a
+  return(projection)
+}
+x=c(3,2,-1)
+a=c(1,0,1)
+
+proj(x,a)
+
+#(i)
+proj2=function(x,a1,a2){
+  a22=a2-((a1%*%a2)/(a1%*%a1))%*%a1
+  v=a22%*%t(a22)
+  projection=((x%*%a1)/(a1%*%a1))%*%a1+((a22%*%x)/v)%*%a22
+  return(projection)
+}
+
+x=c(3,2,-1)
+a1=c(1,0,1)
+a2=c(1,-1,0)
+proj2(x,a1,a2)
+
+#(l)
+x=t(c(3,2,-1))
+a1=t(c(1,0,1))
+a2=t(c(1,-1,0))
+A=cbind(a1,a2)
+
+#B=A%*%(inv((t(A)%*%A)))%*%t(A)
+#C=B%*%x
+#C
+
+```
+
+```{r}
+#4.Exploring a dataset with R
+library(MASS)
+Boston
+?Boston
+#(a)
+#506 rows and 14 columns
+#rows represent different suburbs, columns represent different referencing indexes for the house which affects the suburbs, such as crime rate, average number of rooms, lower status of the population(percent) etc. 
+
+#(b)
+library(car)
+pairs(~ crim+chas+nox+rm+medv, data=Boston,main='Simple Scatterplot Matrix')
+pairs(~ crim+zn+indus+dis+tax+black, data=Boston,main='Simple Scatterplot Matrix')
+pairs(~ crim+ptratio+lstat+rm+medv, data=Boston,main='Simple Scatterplot Matrix')
+#we find out that average numebr of rooms per dwelling has a postive, roughly linear relationship with median value of owner-oppupied homes. 
+#In addition, lower status of the population is negatively related to average number of rooms per dwelling. median value of owner occupied homes is negatively related to average number of rooms per dwelling as well. 
+
+#(c)Are any predictors associated with per capita crime rate? 
+pairs(~crim+black,data=Boston)
+
+#(d)
+#range of high crime rates? Tax rates? Pupil-teacher ratios? 
+boxplot(Boston$crim)
+boxplot(Boston$ptratio)
+boxplot(Boston$tax)
+#according to boxplot, we can see that several suburbs have particular high crime rate commpared to majority of suburbs. For tax rates, some of the suburbs have higher tax rates, for pupil-teacher ratios, there are also suburbs which have particualr high ratios than other suburbs.
+
+#(e)how many suburbs bound the Charles River
+length(which(Boston$chas==1))
+#in total, 35 suburbs bound the Charles River
+
+#(f)median of pupil teacher ratio among the towns
+median(Boston$ptratio)
+#19.05 is the median of pupil teacher ratio
+
+#(g)
+#lowest median value of owneroccupied homes.What are the values of the other predictors for that suburb, and how do those values compare to the overall
+#ranges for those predictors?
+which(Boston$medv==min(Boston$medv)) #399,406
+Boston[399,]
+Boston[406,]
+range(Boston$crim) # 0.00632 88.97620
+range(Boston$zn) # 0 100
+range(Boston$indus) # 0.46 27.74
+range(Boston$nox)  #0.385 0.871
+range(Boston$rm)   #3.561 8.780
+range(Boston$age)   #2.9 100.0
+range(Boston$dis)   # 1.1296 12.1265
+range(Boston$rad)   # 1 24
+range(Boston$tax)  #187 711
+range(Boston$ptratio)   #12.6 22.0
+range(Boston$black)   #0.32 396.90
+range(Boston$lstat)   # 1.73 37.97
+range(Boston$medv)  # 5 50
+#for these two suburbs,denote them as s1 and s2(correponding to record 399 and record 406). s1 has extremely low proportion of residential land zoned for lots, extremely big age, extremely high index of accessibility to radial highways,relatively high property tax,pupil-teacher ratio,and lower status of population. It also has extremely high proportion of black. 
+
+#s2 has relatively high crime rate, age, index of accessibility to radial highways.Low distances to 5 Boston employment centers. Relatively high pupil teacher ratio, black proportion and lower status of population. 
+
+#(h)In this data set, how many of the suburbs average more than seven rooms per dwelling? More than eight rooms per dwelling?comment on those. 
+length(which(Boston$rm>7)) #64 suburbs average more than 7 rooms per dwelling.
+length(which(Boston$rm>8)) #13 suburbs average more than 8 rooms per dwelling
+
+Boston[which(Boston$rm>7),]
+#For suburbs average more than 7 rooms per dwelling, crime rates are low, index of accessibility to radial highways are small, black proportion are high, lower status of popultaion are small. 
+
+Boston[which(Boston$rm>8),]
+#For suburbs average more than 8 rooms per dwelling, Crime rates are extremely low, most of the houses have age over 70 years, index of accessibility to radial highways are small,black proportion are high, lower status of popultaion are small. 
+
+
+#(i)what is the population for this dataset? 
+#population is all the suburbs of Boston. 
+
+#(j)Can you define a prediction problem that you may use this dataset for? Describe it in the framing of the three-circle representation discussed in the class.
+
+#Reality:current suburbs in Boston
+#Models:feasible machine learning algorithms, eg, logistic regression. 
+#Future Reality: Given the current suburbs data in Boston, predict in the future, if a new suburb will be estalished very closly to 5 Boston employment ceneters, also it has a good accessibility to highways, will the suburbs be occupied by big proportion of lower status of population? 
+
+
+
+
+
+
+
+
+
+
+```
+
+#5.True or false
+#(a)
+#T. Cross validation is applicable to many machine learning tasks, it is versatile and powerful. 
+
+#(b)
+#F. cross validation error is a good proxy for method selection, but not always good for estimating prediction error. 
+
+#(c)F. 
+#Vanilla cross validation is good for data which are interchangeble, time series data has a dependency on time, thus is not suitable for vanilla cross validation. 
+
+#(d)F. 
+#Usually, relevancy is determined by domain knowledeg in advance ,however, it is hard to dertermine complete relevance just by EDA. s
+
+#(e)F.
+#Data collection is essential for data analysis. 
+#(f)T.
+#For example, election results in the U.S could only be used to predict future election results in the U.S. Past election results in Russia will not be helpful in this case.
+
+#(g)F.
+#clustering, visualization, or simply presentation might be the goal instead of prediction. 
+

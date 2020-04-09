@@ -1,0 +1,142 @@
+---
+title: "stat151_hw6"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#1.Kaggle competition 
+```{r}
+#data observation
+train=read.csv('train.csv')
+test=read.csv('test.csv')
+ntrain=dim(train)[1]
+ntrain
+ntest=dim(test)[1]
+ntest
+full=rbind(train[,-2],test)
+nfull=dim(full)[1]
+nfull
+#print info of all columns
+ncol=dim(full)[2]
+for(i in 1:ncol){
+  cur=full[,i]
+  message(colnames(full)[i],": ", class(cur))
+  if(class(cur)=='factor'){
+    message("    numbe of levels: ",length(levels(cur)))
+  }
+}
+sum(rowSums(is.na(full))>0)
+sum(is.na(full$Age))
+which(is.na(full$Fare))
+table(full$SibSp)
+table(full$Parch)
+table(table(full$Ticket))
+ #according to the observation, we would convert Pclass into a categorical variable, while dealing with missing valus in the Age Variable. PClass,SibSp,Parch,Ticket,might be good predictors to use. 
+hist(full$Fare,xlab='Fare')#take log to make the data look more normal
+hist(log(full$Fare+5),xlab="log(Fare)")
+table(full$Cabin)
+#Embarked seems to be irrelevant to survival status. 
+
+
+#data cleaning
+#Convert PClass in to categorical data
+full$PclassCat=as.factor(full$Pclass)
+#Create categorical variable for SibSp and Parch
+full$SibSpCat=factor(full$SibSp)
+levels(full$SibSpCat)=list('0'=0,'1'=1,'>2'=c(2,3,4,5,8))
+full$ParchCat=factor(full$Parch)
+levels(full$ParchCat)=list('0'=0,'1'=1,'>2'=c(2,3,4,5,6,9))
+#log Fare, median imputation for missing data 
+full$Fare[which(is.na(full$Fare))]=median(full$Fare,na.rm=T)
+full$logFare=log(full$Fare+5)
+#Age, mean imputation for missing data
+mu=mean(full$Age,na.rm=T)
+full$Age2=full$Age
+full$Age2[which(is.na(full$Age2))]=mu
+#Split train data and test data
+train=data.frame(Survived=train$Survived,full[1:ntrain,])#supervised label 
+test=data.frame(full[-(1:ntrain),])
+
+#Models
+colnames(train)
+formulas=list(
+  'Survived ~ PclassCat+Sex+Age2+SibSp+Parch+Fare',
+'Survived ~ PclassCat+Sex+Age2+SibSpCat+ParchCat+Fare',
+'Survived ~ PclassCat+Sex+Age2+SibSp+Parch+logFare',
+'Survived ~ PclassCat+Sex+Age2+SibSpCat+ParchCat+logFare',
+'Survived ~ Pclass+Sex+Age2+SibSp+Parch+Fare',
+'Survived ~ Pclass+Sex+Age2+SibSpCat+ParchCat+Fare',
+'Survived ~ Pclass+Sex+Age2+SibSp+Parch+logFare',
+'Survived ~ Pclass+Sex+Age2+SibSpCat+ParchCat+logFare'
+)
+
+
+#5-fold Cross-Validation
+bestThres=function(phat,y,thres.vec){
+  minerr=Inf
+  best=-1
+  for(i in 1:length(thres.vec)){
+    thres=thres.vec[i]
+    pred=as.numeric(phat>thres)
+    err=sum(pred!=y)
+    if(err<minerr){
+      minerr=err
+      best=thres
+    }
+  }
+  return(best)
+}
+
+```
+
+```{r}
+library(caret)
+k=20
+set.seed(0)
+folds=createFolds(train$Survived,k=k)
+thres.vec=seq(0,1,by=0.05)
+errs=rep(0,length(formulas))
+for(i in 1:length(folds)){
+  for(j in 1:length(formulas)){
+    mod=glm(formula=formulas[[j]],family=binomial,data=train[-folds[[i]],])
+    phat=fitted(mod)
+    thres=bestThres(phat,train$Survived[-folds[[i]]],thres.vec)
+    phatpred=predict(mod,newdata=train[folds[[i]],],type='response')
+    pred=as.numeric(phatpred>thres)
+    err=sum(pred!=train$Survived[folds[[i]]])/length(folds[[i]])
+    errs[j]=errs[j]+err
+    }
+}
+
+
+errs=errs/length(folds)
+errs
+
+```
+
+```{r}
+bestid=which.min(errs)
+bestid
+formulas[[bestid]]
+#The best model chosed by cross validation is "Survived ~ Pclass+Sex+Age2+SibSpCat+ParchCat+Fare"
+
+
+```
+```{r}
+#Prediction
+mod=glm(formula=formulas[[bestid]],family=binomial,data=train)
+summary(mod)
+phat=fitted(mod)
+thres=bestThres(phat,train$Survived,thres.vec)
+phatpred=predict(mod,test,type='response')
+    pred=as.numeric(phatpred>thres)
+    sum(is.na(pred))
+    
+    pred.dat=data.frame(PassengerId=test$PassengerId,Survived=pred)
+    
+
+```
+

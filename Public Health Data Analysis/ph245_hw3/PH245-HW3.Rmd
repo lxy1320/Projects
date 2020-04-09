@@ -1,0 +1,171 @@
+---
+title: "PH245_HW3"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(ggplot2)
+library(dummies)
+
+setwd('/Users/xiaoyingliu/desktop')
+getwd()
+
+# Loading Data
+data = read.table(file="hw3.txt", header=FALSE, quote="", sep=",")
+
+length = nrow(data)
+id= sort( c(seq(1, length)[data[,12]=='?'],
+                seq(1, length)[data[,13]=='?']
+               )
+            )
+
+data[,12] = as.numeric(data[,12]) - 2
+data[,13] = as.numeric(data[,13]) - 1
+
+predictors = data.matrix(data[,1:13])
+response = data[,14]
+response[response > 0] = 1
+
+colnames(predictors) = c("age", "gender", "chestpain", "bldpressure", "chol",
+      "bldsugar", "electrocardio", "heartrate", "angina", "STdepression",
+      "STslope", "vessel", "thal")
+
+# Removing patients without valid data
+predictors = predictors[-id,]
+response = response[-id]
+
+stopifnot(nrow(predictors) == length(response) && nrow(predictors) == 297)
+
+print("Predictors:")
+head(predictors)
+
+print("Response:")
+head(response)
+```
+
+#1(a)
+```{r}
+# EDA
+
+# 1.A.1: How many patients in the dataset had heart disease vs. no disease? 
+numHeartDisease = sum(response)
+noHeartDisease = length(response) - numHeartDisease
+
+print("Total number of patients:")
+length(response)
+stopifnot(length(response) == numHeartDisease + noHeartDisease)
+
+print("Number of patients with heart disease:")
+numHeartDisease
+
+print("Number of patients with no heart disease:")
+noHeartDisease
+
+"________________________________________________________________"
+# 1.A.2: Which predictors are numerical, which are categorical, and which are unclear? 
+
+print("Total number of predictors:")
+ncol(predictors)
+
+print("Numeric predictor variables:")
+head(predictors[,c(1, 4, 5, 8, 10)])
+
+
+print("Categorical predictor variables:")
+head(predictors[,c(2, 3, 6, 9, 12, 13)])
+
+print("Unclear variables that could be treated as either numeric or categorical:")
+head(predictors[, c(7, 11)])
+
+"________________________________________________________________"
+
+print("Gender breakdown % (0):")
+(297-sum(predictors[,2]))/297 * 100
+
+print("Gender breakdown % (1):")
+sum(predictors[,2])/297 * 100
+```
+
+
+#1(b)
+```{r}
+combinedDF = as.data.frame(cbind(predictors, response))
+fit = glm(formula=response~., family="binomial", data=combinedDF)
+summary(fit)
+```
+
+
+#1(c)
+```{r}
+combinedOneHotDF = dummy.data.frame(combinedDF, names=c("chestpain", "thal"))
+
+# Dropping dependency variables
+combinedOneHotDF$chestpain1 = NULL
+combinedOneHotDF$thal1 = NULL
+
+
+# Fit the logistic regression including new dummy variables
+oneHotFit = glm(formula=response~., family="binomial", data=combinedOneHotDF)
+
+summary(oneHotFit)
+```
+
+
+#1(d)
+```{r}
+#The coefficient estimate for serum cholesterol is 0.00493.For every unit increase in blood serum
+#cholesterol, a 0.00493 increase in the log odds of having heart disease compared to not having 
+#heart disease.The p-value for seeing a coefficient estimate is 0.2113. With an alpha of .05, 
+#we fail to reject the null hypothesis that blood serum cholesterol == 0.
+```
+
+
+#1(e)
+```{r}
+#The coefficient estimate for chest pain type 4 was 2.006802. Compared to those having 
+#chest pain type 1,people having this chest pain see a 2.006802 increase in the log odds 
+#of having heart disease. 
+#The p-value of chestpain4 is 0.002105, thus we could reject our null hypothesis (alpha=.05) 
+#that chestpain4's coefficient == 0. Our results indicate that the coefficient estimate is
+#indeed statistically significant to the model and predicting heart disease outcomes.
+```
+
+
+#1(f)
+```{r}
+probabilityPredictions = as.numeric(predict(oneHotFit, combinedOneHotDF, type='response'))
+
+print("Reminder: 0=Heart Disease Absent; 1=Heart Disease Present")
+""
+
+print("Head of Probability Predictions (%Chance that response was not 0)")
+head(probabilityPredictions)
+
+binaryResponsePredictions = as.numeric(probabilityPredictions >= .5)
+
+print("Head of Response Predictions based on model")
+head(binaryResponsePredictions)
+
+print("Head of True responses for training set")
+head(combinedOneHotDF$response)
+
+stopifnot(length(binaryResponsePredictions) == length(combinedOneHotDF$response))
+
+accuracy = sum(binaryResponsePredictions == combinedOneHotDF$response)/length(binaryResponsePredictions)
+print("Model accuracy:")
+accuracy
+
+print("Misclassification rate:")
+1-accuracy
+
+```
+
+
+

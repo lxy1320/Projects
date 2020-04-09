@@ -1,0 +1,499 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath,amssymb,float,amsfonts,enumitem,tcolorbox,bm}
+
+\usepackage{algorithm}
+\usepackage[colorlinks=True,linkcolor=magenta,citecolor=blue,urlcolor=blue,pagebackref=true,backref=true]{hyperref}
+\usepackage[noend]{algpseudocode}
+
+\include{macros}
+
+<<{r  global_options},echo=FALSE>>=
+knitr::opts_chunk$set(include=TRUE,echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width=3, fig.height=3, fig.align='center',
+                      fig.asp = 1, cache= FALSE
+                      )
+@
+
+\title{STAT 154: Homework 5}
+\author{Release date: \textbf{Friday, March 22}}
+\date{Due by: \textbf{11 PM, Friday, April 5}}
+
+\begin{document}
+
+\maketitle
+
+\section*{The honor code}
+
+\begin{enumerate}[label=(\alph*)]
+\item Please state the names of people who you worked with for this homework.
+You can also provide your comments about the homework here.
+\begin{tcolorbox}
+\vspace{20mm}
+\end{tcolorbox}
+
+\item  Please type/write the following sentences yourself and sign at the end. We want to make
+it \emph{extra} clear that nobody cheats even unintentionally.
+
+\emph{I hereby state that all of my solutions were entirely in my words and were written by me.
+I have not looked at another student’s solutions and I have fairly credited all external 
+sources in this write up.}
+\begin{tcolorbox}
+\vspace{20mm}
+\end{tcolorbox}
+
+\end{enumerate}
+
+\newpage 
+\section*{Submission instructions}
+
+\begin{itemize}
+\item It is a good idea to revisit your notes, slides and reading;
+and synthesize their main points BEFORE doing the
+homework.
+
+\item A .Rnw file corresponding to the homework is also
+uploaded for you. You may use that to write-up
+your solutions. Alternately, you can typeset your solutions in latex or
+submit neatly handwritten/scanned solutions.
+
+\item \textbf{For the parts that ask you to 
+implement/run some R code, your answer
+should look something like this (code followed by result):}
+<<>>=
+myfun<- function(){
+show('this is a dummy function')
+}
+myfun()
+@
+Note that this is automatically generated if you use
+the R sweave environment.
+
+\item You need to submit the following:
+\begin{enumerate}
+\item A pdf of your write-up to ``HW5 write-up'' that includes some of
+the code snippets and plots as asked in different parts.
+\item A Rmd or Rnw file, that has all your entire code, to ``HW5 code''.
+\end{enumerate}
+\item Ensure a proper submission to gradescope, otherwise it will
+not be graded. \textbf{This time we will not entertain any regrade
+requests for improper submission.}
+\end{itemize}
+
+\section*{Homework Overview}
+This homework revisits LASSO, kernel ridge regression and other regression methods. It also contains the regression analysis problem from HW4 Problem 6. Note that two more questions have been added in addition to the original HW4 Problem 6.
+
+\section{True or False (10 pts)}
+Examine whether the following statements are true or false and \emph{provide
+one line justification}.
+\begin{enumerate}[label=(\alph*)]
+\item (1 pt) $\ell_1$ regularization can be used as a way to prevent bias.
+\item (1 pt) The LASSO estimate $\hat{\theta}_{\text{LASSO}}$ will have all its coordinates nonnegative.
+\item (1 pt)For regularization parameter $\lambda >0$, unlike ridge regression, the LASSO solution may not be unique. 
+\item (1 pt) Unlike in ridge regression, centering and scaling the data before running LASSO is not recommended. 
+\item (1 pt) Given data matrix $\mat X \in \real^{n \times \dims}$ and response $\vec y \in \real^{n}$, with $n > \dims$. In kernel ridge regression computation, one has to invert a larger matrix than in original ridge regression. 
+\item (1 pt) The Gram matrix in kernel ridge regression (see lecture note n8.pdf on Piazza) is a positive semi-definite matrix.
+\item (1 pt) For a valid kernel function $K$, the corresponding feature mapping $\phi$ can map a finite dimensional vector into an infinite dimensional vector.
+\item (2 pts) In kernel ridge regression with $d = 2$, the feature mapping $\phi(x) = \begin{bmatrix}x_1 \\ x_2 \\ 1 \end{bmatrix}$ corresponds to the following kernel function
+\begin{align*}
+  k(\vec x, \vec z) = \parenth{{\vec x}\tp{\vec z}}^2 + 1.
+\end{align*}
+\item (1 pt) The R package \textbf{glmnet} will run faster if one inputs an array of lambdas as argument to \textbf{glmnet} rather than running a lambda at a time for the same array of lambdas with a for loop.
+\end{enumerate}
+
+\section{Coordinate descent for LASSO (19 pts)}
+For data design matrix $\mat X = \begin{bmatrix}x_1\tp \\ \vdots \\ x_n\tp \end{bmatrix} \in \real^{n \times \dims}$ and response $\vec y = \begin{bmatrix}y_1\tp \\ \vdots \\ y_n\tp \end{bmatrix}  \in \real^n$, LASSO optimization problem can be formulated as follows,
+\begin{align}
+  \label{eq:lasso_matrix_obj}
+  \min_{\theta \in \real^\dims} f(\theta) := \vecnorm{\mat X \theta - \vec y}{2}^2 + \lambda \vecnorm{\theta}{1}.
+\end{align}
+Observe that the objective in~\eqref{eq:lasso_matrix_obj} can be equivalent written as follows without using the matrix notation.
+\begin{align*}
+  \min_{\theta \in \real^\dims} \sum_{i=1}^n \parenth{x_i\tp \theta - y_i}^2 + \lambda \vecnorm{\theta}{1}.
+\end{align*}
+Note that to align with our lecture notes and also for historical reasons, we are using the total square on the first term of 
+equation~\eqref{eq:lasso_matrix_obj}, rather than the average square loss 
+$\frac{1}{n}\vecnorm{\mat X \theta - \vec y}{2}^2$ as follows:
+\begin{align}
+  \label{eq:lasso_matrix_obj_average_loss}
+  \min_{\theta \in \real^\dims} \frac{1}{n}\vecnorm{\mat X \theta - \vec y}{2}^2 + \omega \vecnorm{\theta}{1}.
+\end{align}
+
+\begin{enumerate}
+  \item (2 pts) \textbf{Show that} there exists a choice of $\omega$
+  (depends on $\lambda$) such that the LASSO formulation with the average square loss in equation~\eqref{eq:lasso_matrix_obj_average_loss} gives the same output as the LASSO formulation with the total square loss.
+\end{enumerate}
+
+Although the problem is convex, since the $\ell_1$-regularization term
+in the objective function is non-differentiable, it’s not immediately clear 
+how gradient descent can be used to solve this optimization problem directly.
+There is an alternative method, sub-gradient descent which is usually slow.
+In practice, for Lasso, another algorithm namely,
+coordinate descent is used and is well known to converge fast in practice.
+
+In this algorithm, we optimize over one component of the unknown parameter 
+vector, fixing all other components. It turns out that for the LASSO 
+optimization problem, we can find a closed form solution for optimization
+over a single component fixing all other components (we will discuss this
+in lab). Using this fact, we obtain the following coordinate descent 
+algorithm~\ref{alg:CD_lasso} for LASSO.
+\begin{algorithm}[ht]
+\caption{Coordinate descent for LASSO (or shooting algorithm)}\label{alg:CD_lasso}
+\begin{algorithmic}[1]
+\State Initialize $\theta = \theta_0$.
+\State $r\gets a\bmod b$
+\While{Not converged}
+\For {$j = 1,\ldots,d$}
+  \State $a_j = 2 \sum_{i=1}^n x_{ij}^2$;
+  \State $c_j = 2 \sum_{i=1}^n x_{ij}\parenth{y_i - \sum_{k = 1, k \neq j}^\dims \theta_k x_{ik}}$;
+  \State $\theta_j = \textbf{soft}(\frac{c_j}{a_j}, \frac{\lambda}{a_j})$;
+\EndFor
+\EndWhile
+\State \textbf{return} $\theta$
+\end{algorithmic}
+\end{algorithm}
+The soft thresholding function is defined as
+\begin{align*}
+  \textbf{soft}(a, \delta) = \text{sign}(a) \parenth{\abss{a} - \delta}_+
+\end{align*}
+
+\begin{enumerate}
+  \setcounter{enumi}{1}
+  \item (2 pts) \textbf{Manually draw} the soft-thresholding function $a \mapsto \textbf{soft}(a, 1)$. Is it a non-decreasing function if we restrict the function domain to $a >0$?
+  \item (1 pt) Suppose we fix all but $j$-th coordinate of $\theta$ and optimize
+  the objective~\eqref{eq:lasso_matrix_obj} over $\theta_j$. \textbf{Show
+  that} the one dimensional objective obtained
+  by fixing all other coordinates of $\theta$ except the $j$-th coordinate of the LASSO objective~\eqref{eq:lasso_matrix_obj} in the coordinate descent algorithm is given by
+  \begin{align}
+    g: \real &\mapsto \real \notag \\
+    g(\alpha) &= \sum_{i=1}^n \brackets{\alpha x_{ij} + \sum_{k=1, k\neq
+    j}^d \theta_k x_{ik} - y_i}^2 + \lambda \abss{\alpha} + \lambda \sum_{k=1, k\neq j}^d \abss{\theta_k},
+  \end{align}
+  where we have introduced $\alpha$ to denote the role of $\theta_j$ and
+  simplify our discussion later on.
+\end{enumerate}
+
+
+  For the following parts, we remark that the function $g$ is convex. The
+  only thing keeping $g$ from being differentiable is the term with $\abss{\alpha}$.
+  Moreover, the function $g$ is differentiable at every point
+  except $\alpha=0$. So we will break the problem into $3$ cases 
+  $\alpha >0$, $\alpha < 0$ and $\alpha = 0$.
+  It will be convenient to use the following expression as shorthand notations
+  for the discussion to follow:
+  \begin{align*}
+    \text{sign}(\alpha) &:= \begin{cases} 1 \quad \alpha >0 \\ 0 \quad \alpha=0 \\ -1 \quad \alpha < 0 \end{cases}\\
+    a_j &:= 2 \sum_{i=1}^n x_{ij}^2 \\
+    c_j &:= 2 \sum_{i=1}^n x_{ij} \parenth{y_i - \sum_{k=1, k\neq j}^d \theta_k x_{ik}}.
+  \end{align*}
+
+\begin{enumerate}
+  \setcounter{enumi}{3}
+  \item (1 pt) \textbf{Write down} the expression for the derivative
+  $g'(\alpha)$
+  for $\alpha \neq 0$. You can assume that $\sum_{i=1}^n x_{ij}^2 > 0$. 
+
+  \item (1 pt) Suppose $\alpha^*$ is the point that minimizes $g$ and assume that
+  it is strictly positive, i.e.,  $\alpha^*>0$.
+  Then \textbf{show that} $\alpha^* = \frac{1}{a_j}(c_j - \lambda)$. 
+
+  \item (1 pt) Now consider the other case, when  $\alpha^*$ 
+  minimizes $g$ and is strictly negative, i.e.,  $\alpha^*< 0$.
+  Then, \textbf{show that} $\alpha^* = \frac{1}{a_j}(c_j + \lambda)$. 
+
+  \item (3 pts) Now \textbf{give conditions} on $c_j$ that imply that a minimizer
+  $\alpha^*$
+  is positive and \textbf{conditions} for which a minimizer $\alpha^*$ is negative.
+\end{enumerate}
+
+To analyze the case when $\alpha^*=0$, we have to recall a few
+more mathematical concepts. For the function $g:\real \to \real$, its one-sided
+derivatives are defined as follows
+  \begin{align*}
+    D^+(g) (\alpha) = \lim_{\epsilon >0,  \epsilon \rightarrow 0} \frac{g(\alpha + \epsilon) - g(\alpha)}{\epsilon}, \quad D^-(g) (\alpha) = \lim_{\epsilon >0,  \epsilon \rightarrow 0} \frac{g(\alpha - \epsilon) - g(\alpha)}{\epsilon}.
+  \end{align*}
+  Also \textbf{note the following useful fact}: 
+  If $g$ is a convex function on $\real$, $\tilde{\alpha}$ is a minimizer of $g$ if and only if
+  \begin{align}
+    D^+(g) (\tilde{\alpha}) \geq 0 \text{ and } D^-(g) (\tilde{\alpha}) \geq 0.
+    \label{eq:derivative_condition}
+  \end{align}
+  
+  \begin{enumerate}
+    \setcounter{enumi}{7}
+  \item (2 pts) \textbf{Derive the expressions} for the two one-sided
+  derivatives
+  of $g$ at $\alpha = 0$.
+
+  \item (2 pts) \textbf{Show that} if $c_j \in [-\lambda, \lambda]$, then the minimizer
+  of $g$ satisfies $\alpha^*= 0$.\\
+  \emph{Hint: You may use the result~\eqref{eq:derivative_condition}.}
+
+  \item (2 pts) Putting together the results from parts 5,6,7 and 8 we
+  can conclude that the minimizer of $g$ takes the following form
+  \begin{align*}
+    \alpha^* = \begin{cases}\frac{1}{a_j}(c_j - \lambda) & c_j > \lambda \\
+    0 & c_j \in [-\lambda, \lambda] \\
+    \frac{1}{a_j}(c_j - \lambda) & c_j < -\lambda.
+    \end{cases}
+  \end{align*}
+  \textbf{Show that} this is exactly equivalent to the soft-thresholding applied in Algorithm~\ref{alg:CD_lasso}.
+  \item (2 pts) \textbf{Discuss} qualitatively what the algorithm is doing 
+  and \textbf{why} it is a reasonable algorithm if we want
+  a sparse solution.
+\end{enumerate}
+
+
+\section{Regression analysis on Ames Housing dataset (21 pts, Readable code snippet required in the write-up)}
+First download the Ames Housing dataset (AmesHousing.txt) from Piazza. You can find a complete description of the variables here (\href{http://jse.amstat.org/v19n3/decock/DataDocumentation.txt}{http://jse.amstat.org/v19n3/decock/DataDocumentation.txt}).
+The dataset contains information from the Ames Assessor’s Office used in computing assessed values for individual residential properties sold in Ames, IA from 2006 to 2010.
+
+You may load the dataset as follows
+<<>>=
+# SET YOUR OWN WORKING DIRECTORY
+# setwd("/Users/yuansichen/UCB/Teaching/2019_Spring/Problems/stat154copy/hws/hw4/")
+
+# load the Ames txt data 
+Ames <- read.delim("AmesHousing.txt", header = TRUE, sep = "\t", dec = ".")
+@
+
+\paragraph{Motivation:}
+A regression analysis can be used to answer typical questions as follows
+\begin{itemize}
+  \item What is the predicted sale price of a 2B2B house with 1500 square feet living area?
+  \item Which is the more important variable in predicting sale price, garage area or open porch area?
+\end{itemize}
+This type of analysis could be useful if you want to buy or sell a house in Ames area. 
+
+
+\paragraph{Data preprocessing: }
+For the purpose of this homework, we introduce one particular data preprocessing
+pipeline (might not be optimal) for this dataset. We will only use a limited
+number of variables. \textbf{From now on, you will use the data.frame \emph{AmesTiny}
+as the main data frame. Please split the training and test dataset
+exactly as we did in the following code (with the same seed).}
+<<>>=
+### DO NOT CHANGE THIS PART, BEGIN
+# load the Ames txt data 
+Ames <- read.delim("AmesHousing.txt", header = TRUE, sep = "\t", dec = ".")
+
+continuousVar <- colnames(Ames)[grep("Frontage|SF|Area|Porch", 
+                                     colnames(Ames))]
+
+AmesTiny <- Ames[, c(continuousVar, 
+                     c("Overall.Qual",
+                       "Overall.Cond","Neighborhood",
+                       "SalePrice"))]
+# check NA
+# colSums(is.na(AmesTiny))
+# fill the Garage.Area NA with 0
+AmesTiny$Garage.Area[is.na(AmesTiny$Garage.Area)] = 0
+# change factor variable to actual factor in the data frame
+AmesTiny$Overall.Qual <- factor(AmesTiny$Overall.Qual)
+AmesTiny$Overall.Cond <- factor(AmesTiny$Overall.Cond)
+# fill the continuous variable with column mean
+for(i in 1:ncol(AmesTiny)){
+  AmesTiny[is.na(AmesTiny[,i]), i] <- mean(AmesTiny[,i], na.rm = TRUE)
+}
+
+# divide the data into training and test datasets
+set.seed(12345678)
+testSize <- floor(nrow(AmesTiny)*0.1)
+testIndex <- sample(seq_len(nrow(AmesTiny)), size = testSize)
+AmesTinyTrain <- AmesTiny[-testIndex, ]
+AmesTinyTest <- AmesTiny[testIndex, ]
+### DO NOT CHANGE THIS PART, END
+@
+
+\subsection{Fitting OLS (7 pts)}
+Use \textbf{lm()} to fit the following regression models to predict log(SalePrice + 1) using a handful of predictors. As you will notice, the complexity of the models will increase from one to the next.
+\paragraph{Model 1: ($\dims = 2$)}
+\begin{align*}
+  \textbf{log(SalePrice + 1)} = \beta_0 + \beta_1 \textbf{Gr.Liv.Area} + \epsilon
+\end{align*}
+
+\paragraph{Model 2: ($\dims = 3$)}
+\begin{align*}
+  \textbf{log(SalePrice + 1)} = \beta_0 + \beta_1 \textbf{Gr.Liv.Area} + \beta_2 \textbf{Garage.Area} + \epsilon
+\end{align*}
+
+\paragraph{Model 3: ($\dims = 4$)}
+\begin{align*}
+  \textbf{log(SalePrice + 1)} = \beta_0 + \beta_1 \textbf{Gr.Liv.Area} + \beta_2 \textbf{Garage.Area} + \beta_3 \textbf{Open.Porch.SF} + \epsilon
+\end{align*}
+
+\paragraph{Model 4: ($\dims = 5$)}
+\begin{align*}
+  \textbf{log(SalePrice + 1)} = \beta_0 + \beta_1 \textbf{Gr.Liv.Area} + \beta_2 \textbf{Garage.Area} + \beta_3 \textbf{Open.Porch.SF} + \beta_4 \textbf{Lot.Area} + \epsilon
+\end{align*}
+
+\paragraph{Model 5: ($\dims = 14$)}
+\begin{align*}
+  \textbf{log(SalePrice + 1)} = \beta_0 + \beta_1 \textbf{Gr.Liv.Area} + \beta_2 \textbf{Garage.Area} + \beta_3 \textbf{Open.Porch.SF} + \beta_4 \textbf{Lot.Area} + \\
+  (\beta_{5}, \ldots, \beta_{5+8})\tp \textbf{Dummified.Overall.Qual}+\epsilon
+\end{align*}
+
+\paragraph{Model 6: ($\dims = 22$)}
+\begin{align*}
+  \textbf{log(SalePrice + 1)} = \beta_0 + \beta_1 \textbf{Gr.Liv.Area} + \beta_2 \textbf{Garage.Area} + \beta_3 \textbf{Open.Porch.SF} + \beta_4 \textbf{Lot.Area} + \\
+  (\beta_{5}, \ldots, \beta_{5+8})\tp \textbf{Dummified.Overall.Qual} + (\beta_{14}, \ldots, \beta_{14+7})\tp \textbf{Dummified.Overall.Cond} +\epsilon
+\end{align*}
+
+\paragraph{Model 7: ($\dims = 23$)}
+\begin{align*}
+  \textbf{log(SalePrice + 1)} = \beta_0 + \beta_1 \textbf{Gr.Liv.Area} + \beta_2 \textbf{Garage.Area} + \beta_3 \textbf{Open.Porch.SF} + \beta_4 \textbf{Lot.Area} + \\
+  (\beta_{5}, \ldots, \beta_{5+8})\tp \textbf{Dummified.Overall.Qual} + (\beta_{14}, \ldots, \beta_{14+7})\tp \textbf{Dummified.Overall.Cond} +\\
+  \beta_{22} \textbf{log(Gr.Liv.Area+1)} +\epsilon
+\end{align*}
+
+\paragraph{Model 8: ($\dims = 24$)}
+\begin{align*}
+  \textbf{log(SalePrice + 1)} = \beta_0 + \beta_1 \textbf{Gr.Liv.Area} + \beta_2 \textbf{Garage.Area} + \beta_3 \textbf{Open.Porch.SF} + \beta_4 \textbf{Lot.Area} + \\
+  (\beta_{5}, \ldots, \beta_{5+8})\tp \textbf{Dummified.Overall.Qual} + (\beta_{14}, \ldots, \beta_{14+7})\tp \textbf{Dummified.Overall.Cond} +\\
+  \beta_{22} \textbf{log(Gr.Liv.Area+1)} + \beta_{23} \textbf{log(Gr.Liv.Area+1)}^2 + \epsilon
+\end{align*}
+
+\paragraph{Model 9: ($\dims = 25$)}
+\begin{align*}
+  \textbf{log(SalePrice + 1)} = \beta_0 + \beta_1 \textbf{Gr.Liv.Area} + \beta_2 \textbf{Garage.Area} + \beta_3 \textbf{Open.Porch.SF} + \beta_4 \textbf{Lot.Area} + \\
+  (\beta_{5}, \ldots, \beta_{5+8})\tp \textbf{Dummified.Overall.Qual} + (\beta_{14}, \ldots, \beta_{14+7})\tp \textbf{Dummified.Overall.Cond} +\\
+  \beta_{22} \textbf{log(Gr.Liv.Area+1)} + \beta_{23} \textbf{log(Gr.Liv.Area+1)}^2 \\
+  \beta_{24} \textbf{log(Gr.Liv.Area+1)}^3 + \epsilon
+\end{align*}
+
+\paragraph{Model 10: ($\dims = 26$)}
+\begin{align*}
+  \textbf{log(SalePrice + 1)} = \beta_0 + \beta_1 \textbf{Gr.Liv.Area} + \beta_2 \textbf{Garage.Area} + \beta_3 \textbf{Open.Porch.SF} + \beta_4 \textbf{Lot.Area} + \\
+  (\beta_{5}, \ldots, \beta_{5+8})\tp \textbf{Dummified.Overall.Qual} + (\beta_{14}, \ldots, \beta_{14+7})\tp \textbf{Dummified.Overall.Cond} +\\
+  \beta_{22} \textbf{log(Gr.Liv.Area+1)} + \beta_{23} \textbf{log(Gr.Liv.Area+1)}^2 \\
+  \beta_{24} \textbf{log(Gr.Liv.Area+1)}^3 + \beta_{25} \textbf{log(Gr.Liv.Area+1)}^4 + \epsilon
+\end{align*}
+
+\paragraph{Model 11: ($\dims = 27$)}
+\begin{align*}
+  \textbf{log(SalePrice + 1)} = \beta_0 + \beta_1 \textbf{Gr.Liv.Area} + \beta_2 \textbf{Garage.Area} + \beta_3 \textbf{Open.Porch.SF} + \beta_4 \textbf{Lot.Area} + \\
+  (\beta_{5}, \ldots, \beta_{5+8})\tp \textbf{Dummified.Overall.Qual} + (\beta_{14}, \ldots, \beta_{14+7})\tp \textbf{Dummified.Overall.Cond} +\\
+  \beta_{22} \textbf{log(Gr.Liv.Area+1)} + \beta_{23} \textbf{log(Gr.Liv.Area+1)}^2 \\
+  \beta_{24} \textbf{log(Gr.Liv.Area+1)}^3 + \beta_{25} \textbf{log(Gr.Liv.Area+1)}^4 \\
+  \beta_{26} \textbf{log(Gr.Liv.Area+1)}^5 + \epsilon
+\end{align*}
+\begin{enumerate}
+  \item (1 pt) \textbf{Implement your R function  \emph{MSE()}
+  (show your code in the write-up)} which takes
+  regression coefficient $\beta \in \real^d$, new data matrix $\mat X \in
+  \real^{n \times d}$ and response $\vec y \in \real^n$ as input, and output 
+  the mean squared error.
+  \begin{align*}
+    MSE = \frac{1}{n} \vecnorm{\vec y - \mat X \beta}{2}^2.
+  \end{align*}
+  
+  \item (1 pt) \textbf{Implement your R function \emph{R2()}
+  (show your code in the write-up)} which takes regression coefficient $\beta
+  \in \real^d$, a data matrix $\mat X \in \real^{n \times d}$ and response
+  $\vec y \in \real^n$ as input, and outputs coefficient of determination:
+  \begin{align*}
+    R^2 = \textbf{cor}\parenth{\vec y, \mat X \beta}^2,
+  \end{align*}
+  where $\textbf{cor}$ denotes correlation.
+  
+  \item (3 pt) Use your functions \textbf{MSE()}, \textbf{R2()} to create a data frame \textbf{modelQuality} for for these measures (MSE, $R^2$) on the training data set \textbf{AmesTinyTrain} for all 11 models above. The data frame \textbf{modelQuality} should have 2 columns and 11 rows. Check your results of MSE and R2 with R's implementation (Create another data frame \textbf{modelQualityRImp} using \textbf{summary()} on the output of \textbf{lm()}). \textbf{Show code and print \textbf{modelQuality} and \textbf{modelQualityRImp} side by side}. Which model has smallest training MSE? \\
+  Hint: you can get the data design matrix from the \textbf{lm()} output using \textbf{model.matrix()}.
+<<>>=
+# columns involved in 11 models, you might want to use a for loop to loop over models
+Xnames <- c("Gr.Liv.Area", "Garage.Area","Open.Porch.SF",
+                     "Lot.Area",
+                     "factor(Overall.Qual)",
+                      "factor(Overall.Cond)",
+                     "I(log(Gr.Liv.Area+1))",
+                      "I(log(Gr.Liv.Area+1)^2)",
+                      "I(log(Gr.Liv.Area+1)^3)",
+                     "I(log(Gr.Liv.Area+1)^4)","I(log(Gr.Liv.Area+1)^5)")
+@
+  
+  
+  \item (1 pt) \textbf{Plot the training MSEs against the number of predictors
+  in the model and describe in one sentence any trend in the graph (show
+  only plot no code required)}. The number of predictors is treated as a
+  rough measure
+  of model complexity here.
+  
+  \item (1 pt) \emph{Normally, it is not allowed to check the test data set
+    until the last step of the analysis}. Here, for the purpose of this
+    homework, \textbf{plot both the training MSEs and test MSEs against the
+        number of predictors in the model. Is test MSE always decreasing?
+        Which model has the lowest test MSE? (show only the plot, no code
+        required).} Hint: Use \textbf{predict()}
+\end{enumerate}
+
+\subsection{Single validation set (or holdout method) for model selection (2 pts)}
+As we mentioned in class, the training MSEs are not an appropriate way to assess the
+predictive power of the models, since the training set, which is used for calibrating models, is
+also used for model testing.
+
+The training (or in-sample) MSEs tend to have an optimistic bias towards complicated
+models. There are in-sample metrics that take model complexity into account, such as
+Akaike’s information criterion (AIC) and Bayesian Information Criterion (BIC), but these
+are not applicable when an explicit likelihood is not present in the model.
+
+The most straightforward approach is to split the training dataset into two parts: one for actual training
+and one for validation. This approach is commonly known as the validation method. A common
+split is 80-20: use 80\% of the data to train the model and 20\% to validate the model.
+
+\begin{enumerate}
+\item (0pts) Select 20\% of your dataset as holdout. You should simply copy the code below.
+<<>>=
+### DO NOT CHANGE THIS PART, BEGIN
+set.seed(123456)
+valSize <- floor(nrow(AmesTinyTrain)*0.2)
+valIndex <- sample(seq_len(nrow(AmesTinyTrain)), size = valSize)
+# actual training data
+AmesTinyActTrain <- AmesTinyTrain[-valIndex, ]
+AmesTinyActVal <- AmesTinyTrain[valIndex, ]
+### DO NOT CHANGE THIS PART, END
+@
+\item (2pts) For each of the 11 regression models, train on the remaining 80\% of the data,
+predict the validation data, and compute the validation MSE. For this, \textbf{create a new data frame \emph{modelQualitySingleVal} for these measures (trainMSE, valMSE) and plots these values. Identify which model gives the lowest validation MSE. Show the plots and the code for this part in the write-up.}
+\end{enumerate}
+\subsection{Cross validation for model selection (3 pts)}
+Cross-validation is an alternative to the single validation method. A useful package for such a task is
+\textbf{caret}. To generate folds, we can use \textbf{createFolds()}.
+<<>>=
+library(caret)
+# create 10 folds
+folds <- createFolds(AmesTinyTrain$SalePrice, k = 10)
+@
+Note that \textbf{folds} contains a list of vectors of indices.
+Since randomness is involved, you might get a different list. This is why you should also
+specify a random seed with \textbf{set.seed()} so you can replicate your analyses.
+\begin{enumerate}
+\item (2 pts) Use \textbf{createFolds()} to create a list folds to do a 5-fold cross validation to estimate the
+prediction error for log(SalePrice+1). Specifically, for each fold, for each model, train the model based on all observations except the ones in the fold and compute the validation MSE on data in that fold. You shold end up having a $11 \times 5$ matrix with rows corresponding the models and columns corresponding to the folds. \textbf{Show the code for this part in the write-up.}
+
+\item (1 pts) The CV-MSE is the average MSE over folds.
+\begin{align*}
+  \text{MSE}_{CV} = \frac{1}{\#\text{folds}} \sum_{i = 1}^{\#\text{folds}} \text{MSE on i-th fold}. 
+\end{align*}
+Calculte CV-MSE for each model. \textbf{Plot trainMSE, testMSE, singleValMSE, CV-MSEs again the number of features in each model in the same plot. Which model gives the lowest CV-MSE? Show the plots and the code for this part in the write-up.}
+\end{enumerate}
+
+\subsection{Fitting ridge regression (3 pts)}
+\label{subsec:ridge}
+\begin{enumerate}
+\item (1 pts) Use ridge regression to predict log(SalePrice+1) with \underline{all predictors} in \textbf{AmesTiny} and regularization parameter $\lambda=1.0$. Make sure you dummify the factor variables and then scale the design matrix before fitting your model. \textbf{Show the code for this part in the write-up.}
+\item (2 pts) Varying the parameter $\lambda$ with ridge regression (Your $\lambda$ should contain $0.1$, $1000$ and at least 10 numbers in between), plot trainMSE and CV-MSEs of ridge against $\lambda$ in the same plot. \textbf{Which $\lambda$ achieves the minimum training MSE and CV-MSEs? Show the plots and the code for this part in the write-up.}
+\end{enumerate}
+
+\subsection{Fitting LASSO (2 pts)}
+\label{subsec:LASSO}
+\begin{enumerate}
+\item (2 pts) Run LASSO to predict log(SalePrice+1) with \underline{all predictors} in \textbf{AmesTiny}. Varying the parameter $\lambda$ with LASSO, plot trainMSE and CV-MSEs of LASSO against $\lambda$ in the same plot. \textbf{Which $\lambda$ achieves the minimum training MSE and CV-MSEs? Show the plots and the code for this part in the write-up.}
+\end{enumerate}
+
+\subsection{Variable Importance (4 pts)}
+Recall from lecture notes that a feature importance plot is a bar plot which has feature names as x-axis and the absolute values of a subset of coordinates of $\beta$ as y-axis. You might want to use the \textbf{geom\_bar} function in \textbf{ggplot2}.
+\begin{enumerate}
+\item (2 pts) For the ridge estimate $\hat{\beta}_{\text{ridge}}$ which achieves the best CV-MSE in the subsection~\ref{subsec:ridge}, \textbf{show the feature importance plot for the top 10 coordinates of $\hat{\beta}_{\text{ridge}}$ with the largest absolute values.}
+\item (2 pts) For the LASSO estimate $\hat{\beta}_{\text{LASSO}}$ which achieves the best CV-MSE in the subsection~\ref{subsec:LASSO}, \textbf{show the feature importance plot for the top 10 coordinates of $\hat{\beta}_{\text{LASSO}}$ with the largest absolute values.} 
+\end{enumerate}
+
+
+\end{document}

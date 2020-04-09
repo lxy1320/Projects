@@ -1,0 +1,128 @@
+---
+title: "Stat153_hw1_Xiaoying Liu"
+output:
+  pdf_document: default
+  html_document: default
+---
+#1.
+```{r}
+library(TSA)
+library(forecast)
+library(ggplot2)
+library(gridExtra)
+#install.packages("gtrendsR")
+library(dplyr)
+library(gtrendsR)
+#microsoft=gtrends("microsoft")
+#df=microsoft[[1]]
+microsoft=read.csv("multiTimeline2.csv")
+
+#examine data
+
+microsoft=ts(microsoft)#global/past 5 years
+t=time(microsoft)
+class(microsoft)
+
+```
+####play with data
+```{r}
+ts=ts(microsoft,frequency=12)
+ts_decompose=decompose(ts,"additive")
+plot(as.ts(ts_decompose$seasonal))
+plot(as.ts(ts_decompose$trend))
+plot(as.ts(ts_decompose$random))
+ts_decompose$random
+```
+#153 hw questions :
+#1. (a)what is time plot? Compare and discuss comments(supposed to comment on 3 graphs)
+#.(b)Explain smoothing parameter? 
+#(c) is there any trend in differenced data? 
+#(d)isotonic trend, what does it look like?
+
+
+
+#(a)fit a parametric curve to data.plot of original data and trend estimate. Time plot and correlogram of residuals. Comment on each plots
+```{r}
+#try linear_fit
+linear_fit <- lm(microsoft ~ t)
+linear_fit
+#original data plot and estimate trend
+plot(microsoft)
+lines(as.numeric(t), linear_fit$fitted.values, col='red')
+#in the original data plot, it is hard to determine the trend. From the way of the data is collected(weekly data), we can infer that there is a seasonality and trend in the data. The original data shows a descending trend somehow, thus we tried to fit a linear model.And we will inpect the residual plot to see if the model captures data well. 
+#residual plot
+plot(as.numeric(t), linear_fit$residuals, type='l',
+     xlab='time', ylab='residuals', main='Residuals')
+#in the residual plot, we first examine if its mean is close enough to 0, mean(linear_fit$residuals), the mean is indeed close enough to 0, which means the estimator is unbiased. Then we need to inspect if they all have same variance(it is better if they have same variance). From the plot, the residuals do not have all same variance. Then we need to know if there is any correlaton bettwen residuals. We need acf plot to answer this. 
+acf(linear_fit$residuals, main='Sample ACF of the residuals')
+#acf of residuals shows that the correlation between residuals are not significantly correlated.(All within blue band). Although there are some kind of dependency, the dependency is not significantly enough to show correlation. 
+
+```
+
+```{r}
+#try quadratic fit
+quadratic_fit <- lm(microsoft ~t + I(t^2))
+#plot original data and estimate trend
+plot(microsoft, main='microsoft')
+lines(as.numeric(t), quadratic_fit$fitted.values, col='red')
+#in the original data plot, it is hard to determine the trend. From the way of the data is collected(weekly data), we can infer that there is a seasonality and trend in the data. The original data shows a descending trend somehow, thus we tried to fit a quadratic model to see if it could capture the data better than linear fit.And we will inpect the residual plot to see if the model captures data well. 
+
+#residuals plot
+plot(as.numeric(t), quadratic_fit$residuals, type='l',
+     xlab='time', ylab='residuals', main='Residuals')
+#in the residual plot, we first examine if its mean is close enough to 0, mean(quadratic_fit$residuals), the mean is indeed close enough to 0, which means the estimator is unbiased. Then we need to inspect if they all have same variance(it is better if they have same variance). From the plot, the residuals do not have all same variance. Then we need to know if there is any correlaton bettwen residuals. We need acf plot to answer this.
+acf(quadratic_fit$residuals, main='Sample ACF of the residuals')
+#in the residual plot, we first examine if its mean is close enough to 0, mean(linear_fit$residuals), the mean is indeed close enough to 0, which means the estimator is unbiased. Then we need to inspect if they all have same variance(it is better if they have same variance). From the plot, the residuals do not have all same variance. Then we need to know if there is any correlaton bettwen residuals. We need acf plot to answer this.
+#acf of residuals shows that the correlation between residuals are not significantly correlated.(All within blue band). Although there are some kind of dependency, the dependency is not significantly enough to show correlation. 
+
+
+```
+
+
+
+
+#(b)Smooth the trend. Choose smoothing parametr. 3 plots with comments. 
+```{r}
+#smoothing to get a general idea
+microsoft_smoothed <- stats::filter(microsoft, rep(1/5, 5), sides=2, method='convolution')
+#I choose the 
+#plot original data and trend estimate
+plot(microsoft, main='microsoft google trends')
+lines(as.numeric(t), microsoft_smoothed, col='blue')
+#there is no obvious trend after smoothing the original data.I tried several smoothing parametr,and chose the paramter becuase it captures the data well without losing too much informtaion.  
+#residuals plot
+residuals=microsoft-microsoft_smoothed
+lines(as.numeric(t),residuals,col="orange")
+residuals <- residuals[!is.na(residuals)]
+acf(residuals,main='Sample ACF of the residuals')
+#From residual and acf plot, we can see there is a significant correlation for a certain lag h(h is between 1 and 2), which implies the model did not capture all information,and there is a dependency between data at time t and data at time t and time (t+h).Other than that the residuals seems to be white noise. 
+```
+
+
+#(c)differencing data. Is there any trend?
+```{r}
+diff<- diff(microsoft,differences=1,lag=1)
+plot(diff,ylim=c(-5,5))
+abline(h=mean(diff), col='red')
+diff_pred <- microsoft[length(microsoft)] + (microsoft[length(microsoft)] - microsoft[1]) / (length(microsoft) - 1) 
+diff_pred
+acf(diff)
+#lag=1 exceeds the blue bar significantly, this means that differding model does not capture all information in data. Thus there is a dependency between each time point t and time point (t+1).Other than that difference data seems to be white noise. 
+
+```
+
+
+#(d)isotonic estimation. plot and comment. 
+```{r}
+iso_fit <- isoreg(x=t, y=-microsoft)
+plot(microsoft, main='microsoft')
+lines(as.numeric(t), -iso_fit$yf, col='red')
+#the iso_fit plot shows that there is a descending trend. 
+plot(as.numeric(t), iso_fit$y-iso_fit$yf, type='l',
+     xlab='time', ylab='residuals', main='Residuals')
+acf(as.numeric(iso_fit$y - microsoft), main='Sample ACF of the residuals')
+#acf of residuals the diff shows a white-noise like pattern.We allow 5% to be outside the blue band. It seems that the model capture the data well. 
+
+```
+
+

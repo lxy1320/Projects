@@ -1,0 +1,523 @@
+---
+title: "stat154_hw4"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dummies)
+library(glmnet)
+library(caret)
+library(ggplot2)
+```
+
+#3.Regression analysis on Ames data
+```{r}
+Ames <- read.delim("AmesHousing.txt", header = TRUE, sep = "\t", dec = ".")
+
+```
+
+```{r}
+continuousVar <- colnames(Ames)[grep("Frontage|SF|Area|Porch",
+colnames(Ames))]
+
+AmesTiny <- Ames[, c(continuousVar,
+c("Overall.Qual",
+"Overall.Cond","Neighborhood",
+"SalePrice"))]
+# check NA
+colSums(is.na(AmesTiny))
+AmesTiny$Garage.Area[is.na(AmesTiny$Garage.Area)] = 0
+# change factor variable to actual factor in the data frame
+AmesTiny$Overall.Qual <- factor(AmesTiny$Overall.Qual)
+AmesTiny$Overall.Cond <- factor(AmesTiny$Overall.Cond)
+# fill the continuous variable with column mean
+for(i in 1:ncol(AmesTiny)){
+AmesTiny[is.na(AmesTiny[,i]), i] <- mean(AmesTiny[,i], na.rm = TRUE)
+}
+set.seed(12345678)
+# divide the data into training and test datasets
+testSize <- floor(nrow(AmesTiny)*0.1)
+testIndex <- sample(seq_len(nrow(AmesTiny)), size = testSize)
+AmesTinyTrain <- AmesTiny[-testIndex, ]
+AmesTinyTest <- AmesTiny[testIndex, ]
+
+
+```
+
+
+#3.1
+```{r}
+#1.MSE function
+mse=function(beta,x,y){
+  tmp=t(y-x%*%beta)%*%(y-x%*%beta)/dim(x)[1]
+  return(tmp)
+}
+```
+
+```{r}
+#2. R^2 function
+r2=function(beta,x,y){
+  tmp=(cor(y,x%*%beta))^2
+  return(tmp)
+}
+```
+
+```{r}
+#3.
+
+y=I(log(AmesTinyTrain$SalePrice+1))
+x1=cbind(rep(1,2637),AmesTinyTrain$Gr.Liv.Area)
+lm1=lm(log(SalePrice+1) ~ Gr.Liv.Area,data=AmesTinyTrain)
+beta1=lm1$coefficients
+
+dumQ=dummy(AmesTinyTrain$Overall.Qual,drop=F)
+dumC=dummy(AmesTinyTrain$Overall.Cond,drop=F)
+dim(dumQ)
+dim(dumC)
+dumQ=dumQ[,-1]
+dumC=dumC[,-1]
+
+x2=cbind(x1,AmesTinyTrain$Garage.Area)
+lm2=lm(log(SalePrice+1) ~ Gr.Liv.Area+Garage.Area,data=AmesTinyTrain)
+beta2=lm2$coefficients
+
+x3=cbind(x2,AmesTinyTrain$Open.Porch.SF)
+lm3=lm(log(SalePrice+1) ~ Gr.Liv.Area+Garage.Area+Open.Porch.SF,data=AmesTinyTrain)
+beta3=lm3$coefficients
+
+x4=cbind(x3,AmesTinyTrain$Lot.Area)
+lm4=lm(log(SalePrice+1) ~ Gr.Liv.Area+Garage.Area+Open.Porch.SF+Lot.Area,data=AmesTinyTrain)
+beta4=lm4$coefficients
+
+x5=cbind(x4,dumQ)
+lm5=lm(log(SalePrice+1) ~ Gr.Liv.Area+Garage.Area+Open.Porch.SF+Lot.Area+dumQ,data=AmesTinyTrain)
+beta5=lm5$coefficients
+
+x6=cbind(x5,dumC)
+lm6=lm(log(SalePrice+1) ~ Gr.Liv.Area+Garage.Area+Open.Porch.SF+Lot.Area+dumQ+dumC,data=AmesTinyTrain)
+beta6=lm6$coefficients
+
+x7=cbind(x6,log(AmesTinyTrain$Gr.Liv.Area+1))
+lm7=lm(log(SalePrice+1) ~ Gr.Liv.Area+Garage.Area+Open.Porch.SF+Lot.Area+dumQ+dumC+I(log(Gr.Liv.Area+1)),data=AmesTinyTrain)
+beta7=lm7$coefficients
+
+x8=cbind(x7,log(AmesTinyTrain$Gr.Liv.Area+1)^2)
+lm8=lm(log(SalePrice+1) ~ Gr.Liv.Area+Garage.Area+Open.Porch.SF+Lot.Area+dumQ+dumC+I(log(Gr.Liv.Area+1))+I(log(Gr.Liv.Area+1)^2),data=AmesTinyTrain)
+beta8=lm8$coefficients
+
+x9=cbind(x8,log(AmesTinyTrain$Gr.Liv.Area+1)^3)
+lm9=lm(log(SalePrice+1) ~ Gr.Liv.Area+Garage.Area+Open.Porch.SF+Lot.Area+dumQ+dumC+I(log(Gr.Liv.Area+1))+I(log(Gr.Liv.Area+1)^2)+I(log(Gr.Liv.Area+1)^3),data=AmesTinyTrain)
+beta9=lm9$coefficients
+
+x10=cbind(x9,log(AmesTinyTrain$Gr.Liv.Area+1)^4)
+lm10=lm(log(SalePrice+1) ~ Gr.Liv.Area+Garage.Area+Open.Porch.SF+Lot.Area+dumQ+dumC+I(log(Gr.Liv.Area+1))+I(log(Gr.Liv.Area+1)^2)+I(log(Gr.Liv.Area+1)^3)+I(log(Gr.Liv.Area+1)^4),data=AmesTinyTrain)
+beta10=lm10$coefficients
+
+x11=cbind(x10,log(AmesTinyTrain$Gr.Liv.Area+1)^5)
+lm11=lm(log(SalePrice+1) ~ Gr.Liv.Area+Garage.Area+Open.Porch.SF+Lot.Area+dumQ+dumC+I(log(Gr.Liv.Area+1))+I(log(Gr.Liv.Area+1)^2)+I(log(Gr.Liv.Area+1)^3)+I(log(Gr.Liv.Area+1)^4)+I(log(Gr.Liv.Area+1)^5),data=AmesTinyTrain)
+beta11=lm11$coefficients
+
+
+x=list(x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11)
+beta=list(beta1,beta2,beta3,beta4,beta5,beta6,beta7,beta8,beta9,beta10,beta11)
+modelQuality=matrix(0,nrow=11,ncol=2)
+for(i in 1:11){
+  modelQuality[i,1]=mse(beta[[i]],x[[i]],y)
+  modelQuality[i,2]=r2(beta[[i]],x[[i]],y)
+}
+as.data.frame(modelQuality) #modelQuality contains all training mses
+modelQuality
+#which model has smallest training MSE
+#model 11 has the smallest MSE
+
+
+
+```
+
+```{r}
+n=1:11
+ggplot() +
+  geom_point(aes(x =  n, y = modelQuality[,1])) +
+  geom_line(aes(x = n, y = modelQuality[,1])) +
+  xlab("number of predictors") +
+  ylab("training MSE") 
+#trend shows that as number of predictor increases, training model MSE decreases. 
+```
+
+```{r}
+dumQ=dummy(AmesTinyTest$Overall.Qual,drop=F)
+dumC=dummy(AmesTinyTest$Overall.Cond,drop=F)
+dim(dumQ)
+dim(dumC)
+dumQ=dumQ[,-1]
+dumC=dumC[,-1]
+
+
+y_hat1=predict.lm(lm1,AmesTinyTest,type='response')
+y_hat2=predict.lm(lm2,AmesTinyTest,type='response')
+y_hat3=predict.lm(lm3,AmesTinyTest,type='response')
+y_hat4=predict.lm(lm4,AmesTinyTest,type='response')
+y_hat5=predict.lm(lm5,AmesTinyTest,type='response')
+y_hat6=predict.lm(lm6,AmesTinyTest,type='response')
+y_hat7=predict.lm(lm7,AmesTinyTest,type='response')
+y_hat8=predict.lm(lm8,AmesTinyTest,type='response')
+y_hat9=predict.lm(lm9,AmesTinyTest,type='response')
+y_hat10=predict.lm(lm10,AmesTinyTest,type='response')
+y_hat11=predict.lm(lm11,AmesTinyTest,type='response')
+y=log(AmesTinyTest$SalePrice+1)
+mse1=t(y-y_hat1)%*%(y-y_hat1)/293
+mse2=t(y-y_hat2)%*%(y-y_hat2)/293
+mse3=t(y-y_hat3)%*%(y-y_hat3)/293
+mse4=t(y-y_hat4)%*%(y-y_hat4)/293
+mse5=t(y-y_hat5)%*%(y-y_hat5)/293
+mse6=t(y-y_hat6)%*%(y-y_hat6)/293
+mse7=t(y-y_hat7)%*%(y-y_hat7)/293
+mse8=t(y-y_hat8)%*%(y-y_hat8)/293
+mse9=t(y-y_hat9)%*%(y-y_hat9)/293
+mse10=t(y-y_hat10)%*%(y-y_hat10)/293
+mse11=t(y-y_hat11)%*%(y-y_hat11)/293
+mse_test=c(mse1,mse2,mse3,mse4,mse5,mse6,mse7,mse8,mse9,mse10,mse11)
+
+#plot training mse and test mse in the same plot
+ggplot() +
+  geom_point(aes(x =  n, y = modelQuality[,1]), color = "red") +
+  geom_line(aes(x =  n, y = modelQuality[,1]), color = "red") +
+  geom_point(aes(x = n, y = mse_test), color = "blue") +
+  geom_line(aes(x = n, y = mse_test), color = "blue") +
+  xlab("number of predictors") +
+  ylab("MSE")
+#MSE does not always decrease in test data, model 10 has the lowest test MSE. 
+
+```
+
+
+#3.2
+```{r}
+set.seed(123456)
+valSize <- floor(nrow(AmesTinyTrain)*0.2)
+valIndex <- sample(seq_len(nrow(AmesTinyTrain)), size = valSize)
+# actual training data
+AmesTinyActTrain <- AmesTinyTrain[-valIndex, ]
+AmesTinyActVal <- AmesTinyTrain[valIndex, ]
+```
+
+#3.2.2
+```{r}
+#To obtain validation mses
+mse_validation=matrix(0,nrow=11,ncol=1)
+models=c(lm1,lm2,lm3,lm4,lm5,lm6,lm7,lm8,lm9,lm10,lm11)
+
+
+#specify actual y value(after log transform)
+y=I(log(AmesTinyActVal$SalePrice+1))
+
+#dummify variables
+dumQ=dummy(AmesTinyActVal$Overall.Qual,drop=F)
+dumC=dummy(AmesTinyActVal$Overall.Cond,drop=F)
+dim(dumQ)
+dim(dumC)
+dumQ=dumQ[,-1]
+dumC=dumC[,-1]
+
+mse_validation[1]=mean((predict.lm(lm1,AmesTinyActVal)-y)^2)
+mse_validation[2]=mean((predict.lm(lm2,AmesTinyActVal)-y)^2)
+mse_validation[3]=mean((predict.lm(lm3,AmesTinyActVal)-y)^2)
+mse_validation[4]=mean((predict.lm(lm4,AmesTinyActVal)-y)^2)
+mse_validation[5]=mean((predict.lm(lm5,AmesTinyActVal)-y)^2)
+mse_validation[6]=mean((predict.lm(lm6,AmesTinyActVal)-y)^2)
+mse_validation[7]=mean((predict.lm(lm7,AmesTinyActVal)-y)^2)
+mse_validation[8]=mean((predict.lm(lm8,AmesTinyActVal)-y)^2)
+mse_validation[9]=mean((predict.lm(lm9,AmesTinyActVal)-y)^2)
+mse_validation[10]=mean((predict.lm(lm10,AmesTinyActVal)-y)^2)
+mse_validation[11]=mean((predict.lm(lm11,AmesTinyActVal)-y)^2)
+
+mse_validation
+
+ggplot() +
+  geom_point(aes(x =  n, y = modelQuality[,1]), color = "red") +
+  geom_line(aes(x =  n, y = modelQuality[,1]), color = "red") +
+  geom_point(aes(x = n, y = mse_validation), color = "blue") +
+  geom_line(aes(x = n, y = mse_validation), color = "blue") +
+  xlab("number of predictors") +
+  ylab("MSE")
+
+# Model 11 has the lowest validation MSE
+
+```
+
+#3.3.1
+
+```{r}
+#reload data and re-process data 
+Ames <- read.delim("AmesHousing.txt", header = TRUE, sep = "\t", dec = ".")
+continuousVar <- colnames(Ames)[grep("Frontage|SF|Area|Porch",
+colnames(Ames))]
+
+AmesTiny <- Ames[, c(continuousVar,
+c("Overall.Qual",
+"Overall.Cond","Neighborhood",
+"SalePrice"))]
+# check NA
+colSums(is.na(AmesTiny))
+AmesTiny$Garage.Area[is.na(AmesTiny$Garage.Area)] = 0
+# change factor variable to actual factor in the data frame
+AmesTiny$Overall.Qual <- factor(AmesTiny$Overall.Qual)
+AmesTiny$Overall.Cond <- factor(AmesTiny$Overall.Cond)
+# fill the continuous variable with column mean
+for(i in 1:ncol(AmesTiny)){
+AmesTiny[is.na(AmesTiny[,i]), i] <- mean(AmesTiny[,i], na.rm = TRUE)
+}
+set.seed(12345678)
+# divide the data into training and test datasets
+testSize <- floor(nrow(AmesTiny)*0.1)
+testIndex <- sample(seq_len(nrow(AmesTiny)), size = testSize)
+AmesTinyTrain <- AmesTiny[-testIndex, ]
+AmesTinyTest <- AmesTiny[testIndex, ]
+
+```
+
+```{r}
+set.seed(12345678)
+folds <- createFolds(log(AmesTinyTrain$SalePrice+1), k = 5)
+
+#create dummy variables for each folds
+dumQ_1=dummy(AmesTinyTrain[folds[[1]],]$Overall.Qual,drop=F)
+dumC_1=dummy(AmesTinyTrain[folds[[1]],]$Overall.Cond,drop=F)
+
+dumQ_2=dummy(AmesTinyTrain[folds[[2]],]$Overall.Qual,drop=F)
+dumC_2=dummy(AmesTinyTrain[folds[[2]],]$Overall.Cond,drop=F)
+
+dumQ_3=dummy(AmesTinyTrain[folds[[3]],]$Overall.Qual,drop=F)
+dumC_3=dummy(AmesTinyTrain[folds[[3]],]$Overall.Cond,drop=F)
+
+dumQ_4=dummy(AmesTinyTrain[folds[[4]],]$Overall.Qual,drop=F)
+dumC_4=dummy(AmesTinyTrain[folds[[4]],]$Overall.Cond,drop=F)
+
+dumQ_5=dummy(AmesTinyTrain[folds[[5]],]$Overall.Qual,drop=F)
+dumC_5=dummy(AmesTinyTrain[folds[[5]],]$Overall.Cond,drop=F)
+
+    
+#specify actual y value(after log transform)
+y=I(log(AmesTinyTrain$SalePrice+1))
+
+#create empty matrix to hold mse-cv
+mse_cv=matrix(0,nrow=11,ncol=5)
+
+#select dumQ and dumC for each fold and adjust size, perform mse calculations
+for(i in 1:5){
+  if(i==1){
+    dumQ=dumQ_1
+    dumC=dumC_1
+      dumQ=dumQ[,-1]
+dumC=dumC[,-1]
+  }
+  if(i==2){
+    dumQ=dumQ_2
+    dumC=dumC_2
+      dumQ=dumQ[,-1]
+dumC=dumC[,-1]
+  }
+  if(i==3){
+    dumQ=dumQ_3
+    dumC=dumC_3
+      dumQ=dumQ[,-1]
+dumC=dumC[,-1]
+  }
+  if(i==4){
+    dumQ=dumQ_4
+    dumC=dumC_4
+      dumQ=dumQ[,-1]
+dumC=dumC[,-1]
+  }
+  if(i==5){
+    dumQ=dumQ_5
+    dumC=dumC_5
+      dumQ=dumQ[,-1]
+dumC=dumC[,-1]
+  }
+mse_cv[1,i]=mean((predict.lm(lm1,AmesTinyTrain[folds[[i]],])-y[folds[[i]]])^2)
+mse_cv[2,i]=mean((predict.lm(lm2,AmesTinyTrain[folds[[i]],])-y[folds[[i]]])^2)
+mse_cv[3,i]=mean((predict.lm(lm3,AmesTinyTrain[folds[[i]],])-y[folds[[i]]])^2)
+mse_cv[4,i]=mean((predict.lm(lm4,AmesTinyTrain[folds[[i]],])-y[folds[[i]]])^2)
+mse_cv[5,i]=mean((predict.lm(lm5,AmesTinyTrain[folds[[i]],])-y[folds[[i]]])^2)
+mse_cv[6,i]=mean((predict.lm(lm6,AmesTinyTrain[folds[[i]],])-y[folds[[i]]])^2)
+mse_cv[7,i]=mean((predict.lm(lm7,AmesTinyTrain[folds[[i]],])-y[folds[[i]]])^2)
+mse_cv[8,i]=mean((predict.lm(lm8,AmesTinyTrain[folds[[i]],])-y[folds[[i]]])^2)
+mse_cv[9,i]=mean((predict.lm(lm9,AmesTinyTrain[folds[[i]],])-y[folds[[i]]])^2)
+mse_cv[10,i]=mean((predict.lm(lm10,AmesTinyTrain[folds[[i]],])-y[folds[[i]]])^2)
+mse_cv[11,i]=mean((predict.lm(lm11,AmesTinyTrain[folds[[i]],])-y[folds[[i]]])^2)
+}
+
+mse_cv
+```
+
+#3.3.2
+```{r}
+#calcaulate average cv-mses over folds
+mse_cv_mean=rowMeans(mse_cv,dims=1)
+
+ggplot() +
+  geom_point(aes(x =  n, y = modelQuality[,1]), color = "red") +
+  geom_line(aes(x =  n, y = modelQuality[,1]), color = "red") +
+  geom_point(aes(x = n, y = mse_test), color = "blue") +
+  geom_line(aes(x = n, y = mse_test), color = "blue") +
+  geom_point(aes(x =  n, y = mse_validation), color = "orange") +
+  geom_line(aes(x =  n, y = mse_validation), color = "orange") + 
+  geom_point(aes(x =  n, y = mse_cv_mean), color = "purple") +
+  geom_line(aes(x =  n, y = mse_cv_mean), color = "purple") +
+  xlab("number of predictors") +
+  ylab("MSE")
+
+#the 11th model has the smallest average cv_mse
+
+```
+
+#3.4.1
+```{r}
+Data = dummy.data.frame(data = AmesTiny, names = "Neighborhood", drop = FALSE)
+
+ridge_model <- glmnet(x = as.matrix(Data[,-49]), y = log(Data$SalePrice + 1), alpha = 0, lambda = 1, standardize = TRUE)
+```
+
+#3.4.2
+
+```{r message=FALSE}
+ridge_models <- glmnet(x = as.matrix(Data[, -49]), y = log(Data$SalePrice + 1), alpha = 0, lambda = c(0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 100, 200, 500, 1000), standardize = FALSE)
+
+modelQuality1 = data.frame("trainMSE" = rep(0,12), "CVMSE" = rep(0,12))
+response = log(Data$SalePrice + 1)
+
+
+#training mse
+ m=as.matrix(Data[,-49])
+ m=mapply(m,FUN=as.numeric)
+ m=matrix(data=m,ncol=48,nrow=2930)
+ 
+for (i in 1:12) {
+  error = response - m %*% ridge_models$beta[,i]
+  modelQuality1[i,"trainMSE"] = mean(error^2)
+}
+
+ 
+
+#cv-mses
+set.seed(12345678)
+folds <- createFolds(AmesTiny$SalePrice, k = 5)
+
+modelQuality2 <- data.frame("fold1" = rep(0,12), "fold2" = rep(0,12), "fold3" = rep(0,12), "fold4" = rep(0,12), "fold5" = rep(0,12))
+
+for (i in 1:5) {
+  DataTrain = Data[-folds[i][[1]],]
+  DataValid = Data[folds[i][[1]],]
+  response = log(DataValid$SalePrice + 1)
+  
+  model <- glmnet(x = as.matrix(DataTrain[,-49]), y = log(DataTrain$SalePrice + 1), alpha = 0, lambda = c(0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 100, 200, 500, 1000), standardize = FALSE)
+  
+   m2=as.matrix(DataValid[,-49])
+ m2=mapply(m,FUN=as.numeric)
+ m2=matrix(data=m,ncol=48,nrow=2930)
+  for (j in 1:12) {
+    
+    error = response - m2 %*% model$beta[,j]
+    modelQuality2[j,i] = mean(error^2)
+  }
+
+}
+
+for (i in 1:12) {
+  modelQuality1[i,"CVMSE"] = sum(modelQuality2[i,1:5])/5
+}
+
+ggplot() +
+  geom_point(aes(x = 1:12, y = modelQuality1$trainMSE), color = "red") +
+  geom_line(aes(x = 1:12, y = modelQuality1$trainMSE), color = "red") +
+  geom_point(aes(x = 1:12, y = modelQuality1$CVMSE), color = "blue") +
+  geom_line(aes(x = 1:12, y = modelQuality1$CVMSE), color = "blue") +
+  ggtitle("Training MSE and CV-MSE against lambda")
+```
+
+#3.5
+```{r}
+lasso_model <- glmnet(x = as.matrix(Data[, -49]), y = log(Data$SalePrice + 1), alpha = 1, lambda = c(0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 100, 200, 500, 1000), standardize = FALSE)
+
+
+modelQuality1 = data.frame("trainMSE" = rep(0,12), "CVMSE" = rep(0,12))
+response = log(Data$SalePrice + 1)
+
+
+#training mse
+for (i in 1:12) {
+  error = response - m %*% lasso_model$beta[,i]
+  modelQuality1[i,"trainMSE"] = mean(error^2)
+}
+
+#cv-mses
+set.seed(12345678)
+folds <- createFolds(AmesTiny$SalePrice, k = 5)
+
+modelQuality2 <- data.frame("fold1" = rep(0,12), "fold2" = rep(0,12), "fold3" = rep(0,12), "fold4" = rep(0,12), "fold5" = rep(0,12))
+
+for (i in 1:5) {
+  DataTrain = Data[-folds[i][[1]],]
+  DataValid = Data[folds[i][[1]],]
+  response = log(DataValid$SalePrice + 1)
+  
+  model <- glmnet(x = as.matrix(DataTrain[,-49]), y = log(DataTrain$SalePrice + 1), alpha = 1, lambda = c(0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 100, 200, 500, 1000), standardize = FALSE)
+  
+  for (j in 1:12) {
+    error = response - m2 %*% model$beta[,j]
+    modelQuality2[j,i] = mean(error^2)
+  }
+  
+}
+
+for (i in 1:12) {
+  modelQuality1[i,"CVMSE"] = sum(modelQuality2[i,1:5])/5
+}
+
+
+ggplot() +
+  geom_point(aes(x = 1:12, y = modelQuality1$trainMSE), color = "red") +
+  geom_line(aes(x = 1:12, y = modelQuality1$trainMSE), color = "red") +
+  geom_point(aes(x = 1:12, y = modelQuality1$CVMSE), color = "blue") +
+  geom_line(aes(x = 1:12, y = modelQuality1$CVMSE), color = "blue") +
+  ggtitle("Training MSE and CV-MSE against lambda")
+
+
+```
+
+
+
+#3.6.1
+```{r}
+best = 12
+  
+beta <- head(sort(abs(ridge_models$beta[,best]), decreasing = TRUE), n = 10)
+
+ggplot(data.frame(beta, names(beta)), aes(x = reorder(names.beta., -beta), y = beta)) +
+  geom_bar(stat="identity", fill = "Orange") +
+  xlab("features") +
+  ylab("parameter value") +
+  ggtitle("Variable Importance")
+```
+
+
+#3.6.2
+```{r}
+best = 12
+  
+beta<- head(sort(abs(lasso_model$beta[,best]), decreasing = TRUE), n = 10)
+
+data.frame(beta, names(beta))
+
+
+
+ggplot(data.frame(beta, names(beta)), aes(x = reorder(names.beta., -beta), y = beta)) +
+  geom_bar(stat="identity", fill = "Orange") +
+  xlab("features") +
+  ylab("parameter value") +
+  ggtitle("Variable Importance")
+```
+
+

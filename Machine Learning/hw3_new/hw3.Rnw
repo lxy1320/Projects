@@ -1,0 +1,191 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath,amssymb,float,amsfonts,enumitem,tcolorbox}
+
+\include{macros}
+
+\title{STAT 154: Homework 3}
+\author{Release date: \textbf{Thursday, February 21}}
+\date{Due by: \textbf{11 PM, Wednesday, Mar 6}}
+
+\begin{document}
+
+\maketitle
+
+This homework follows regular submission format, i.e., it is to be
+submitted by each student in the class \emph{individually}--no teams!
+
+\section{A closer look at EM (25 points)}
+
+In this question, we consider a simple mixture  model and work our way through
+a derivation of the EM updates.\footnote{The question borrows ideas
+from one of the homeworks of machine learning class CS 189, Spring 2018.}
+\emph{While the question looks long, please be patient in reading it--the
+description itself will help you understand EM better and also different
+parts of the problem only appear long because of the detailed explanation.}
+
+We work with the following simple two mixture model:
+\begin{align}
+  Z &\sim \text{Bernoulli}(1-w)+1\notag\\
+  X\vert Z=1 &\sim \mathcal{N}(\mu_1, 1), \quad \text{and}\notag\\
+  X\vert Z=2 &\sim \mathcal{N}(\mu_2, 1),
+  \label{eq:model}
+\end{align}
+where $Z$ denotes the label of the Gaussian from which $X$ is drawn.
+Given a set of observations only for $X$ (i.e., the labels are unobserved), 
+our goal is to infer the maximum-likelihood parameters for $\mu_1, \mu_2
+$ and $w$. Note that to simplify your calculations, we have fixed the variance
+parameter and assumed it to be known.
+
+
+\begin{enumerate}[label=(\alph*)] 
+\item (3 points) Let $\vec{\theta} =(\mu_1, \mu_2, w)$ denote the parameters
+of the
+model.
+\textbf{Write down the expressions of the joint likelihood
+$p(X=x, Z=1; \vec{\theta})$ and $p(X=x, Z=2; \vec{\theta})$.
+What is the marginal likelihood $p(X=x; \vec{\theta})$ and the log-likelihood
+$\ell(X=x; \vec{\theta})$?
+Given $n$ i.i.d. samples $\braces{x_1, \ldots, x_n}$, write the expression
+for the log-likelihood $\ell(X_1=x_1, \ldots, X_n=x_n; \vec{\theta})$.}
+
+\item   (4 points)
+To simplify notation, from now on, we use the notation 
+\begin{align*}
+ \ell(x; \vec{\theta}) &= \ell({X} = {x}; \vec{\theta}),
+ \quad\text{and}
+ \quad p(x, k; \vec\theta) = p(X=x, Z=k; \vec\theta).
+\end{align*}
+Let $q$ denote a distribution on the (hidden) labels $\{Z_i\}_{i=1}^n$ given by
+\begin{align}
+  q(Z_1 = z_1, \ldots, Z_n = z_n) = \prod_{i=1}^n q_i(Z_i=z_i). \label{eq:q}
+\end{align}
+Note that since $Z \in\{1, 2\}$, $q$ has $n$ parameters, namely $\{q_i(Z_i=1), i=1, \ldots, n\}$.
+{\bf Show that for a given point $x_i$, we have }
+\begin{align}
+  \ell(x_i; \vec{\theta})
+  &\geq \mathcal{F}_i(\vec{\theta}; q_i)
+  :=\underbrace{\sum_{k=1}^2 q_i(k) \log p (x_i, k; \vec{\theta})}_{\mathcal{L}(x_i; \vec\theta, q_i)} + \underbrace{\sum_{k=1}^2 {q}_i(k) \log\left(\frac{1}{{q}_i(k)}\right)}_{H(q_i)}, 
+  \label{eq:lower_bound}
+\end{align}
+where $H({q}_i)$ denotes the Shannon-entropy of the distribution
+$q_i$. 
+Thus {\bf conclude that we obtain the following lower bound on the log-likelihood:}
+\begin{align}
+  \ell(\{x_i\}_{i=1}^n; \vec\theta)  \geq 
+  \mathcal{F}(\vec{\theta}; q) := \sum_{i=1}^n\mathcal{F}_i(\vec{\theta}; {q}_i).
+  \label{eq:F_defn}
+\end{align}
+% Note that, as explained before, the two parameters for our case, we have 
+% $\vec\theta=(\mu_1, \sigma_1, \mu_2, \sigma_2)$ and $q$ has $n$ parameters
+% since we have $n$ data points and $Z$ takes only two values.
+
+{\em Hint: Jensen's inequality, the concave-$\cap$ nature of the log,
+  and reviewing lecture notes might be useful.} 
+
+\item  (2 points) The EM algorithm can be considered a
+coordinate-ascent\footnote{A coordinate-ascent algorithm is just one
+  that fixes some coordinates and maximizes the function with respect
+  to the others as a way of taking iterative improvement steps.} algorithm
+  on the
+lower bound $\mathcal{F}(\vec{\theta}; q)$ derived in the previous part,
+where we ascend with respect to $\vec\theta$ and $q$ in an alternating fashion.
+More precisely, one iteration of the EM algorithm is made up of 2-steps:
+\begin{align*}
+  q^{t+1} &= \arg\max_{q} \mathcal{F}(\vec{\theta}^t; q) \quad&\text{(E-step)}\\
+  {\vec{\theta}}^{t+1} &\in \arg\max_{\vec\theta} \mathcal{F}(\vec{\theta}; q^{t+1}).  \quad&\text{(M-step)}
+\end{align*}
+Given an estimate $\vec\theta^t$, the previous part tells us that 
+$\ell(\{x_i\}_{i=1}^n; \vec{\theta}^t)  \geq 
+  \mathcal{F}(\vec{\theta}^t; q)$. {\bf Verify that equality holds in
+    this bound if we plug in $q(Z_1=z_1, \ldots, Z_n=z_n) 
+  = \prod_{i=1}^n p(Z = z_i\vert X= x_i; \vec{\theta}^t)$
+and hence we can conclude that 
+\begin{align}
+\label{eq:estep}
+  q^{t+1}(Z_1=z_1, \ldots, Z_n=z_n) 
+  &= \prod_{i=1}^n p(Z = z_i\vert X= x_i; \vec{\theta}^t).
+\end{align}
+is a valid maximizer for the problem $\max_{q} \mathcal{F}(\vec{\theta}^t; q)$ 
+and hence a valid E-step update.}
+
+\item  (2 points) \textbf{Derive the expressions for $p(Z = 1\vert X= x_i;
+\vec{\theta}^t)$
+and $p(Z = 2\vert X= x_i; \vec{\theta}^t)$ to complete the E-step computations
+where $\vec\theta^t = (\mu_1^t, \mu_2^t, w^t)$.}
+
+\item (3 points) 
+We now discuss the M-step. Using the definitions from equations~\eqref{eq:lower_bound} and \eqref{eq:F_defn}, we have that
+\begin{align*}
+  \mathcal{F}(\vec{\theta}; q^{t+1}) = 
+  \sum_{i=1}^n(\mathcal{L}(x_i; \vec\theta, q_i^{t+1})
+    + H(q_i))
+  = H(q^{t+1}) + \sum_{i=1}^n\mathcal{L}(\vec x_i; \vec\theta, q_i^{t+1}),
+\end{align*}
+where we have used the fact that entropy in this case is given by $H(q^{t+1}) = \sum_{i=1}^nH(q_i^{t+1})$.
+Notice that although (as computed in previous part), $q^{t+1}$ depends
+on $\vec\theta^t$, the M-step only involves maximizing $\mathcal{F}(\vec{\theta}; q^{t+1})$
+with respect to just the parameter $\vec\theta$ while keeping the 
+parameter $q^{t+1}$ fixed.
+Now, noting that the entropy term $H(q^{t+1})$ does not depend on 
+the parameter $\vec\theta$, we conclude that the M-step simplifies to solving for
+\begin{align*}
+  \arg\max_{\vec\theta} \underbrace{\sum_{i=1}^n\mathcal{L}(\vec x_i; \vec\theta, q_i^{t+1})}_{=:\mathcal{L}(\vec{\theta}; q^{t+1})} .
+\end{align*}
+We use the simplified notation
+\begin{align*}
+  q^{t+1}_i:= q_i^{t+1}(Z_i=1) \quad\text{ and } \quad  
+  1-q^{t+1}_i:= q_i^{t+1}(Z_i=2)
+\end{align*}
+and recall that $\vec \theta = (\mu_1, \mu_2, w)$.
+
+{\bf Show that the expression for $\mathcal{L}(\vec{\theta}; q^{t+1})$ for the $2$-mixture case is given by
+\begin{align*}
+  &\mathcal{L}((\mu_1, \mu_2, w); q^{t+1}) \\
+  % &= \sum_{i=1}^n (q^{t+1}_i \log p(x_i, 1) + (1-q_i^{t+1})\log p(x_i, 2))\\
+  % &= \sum_{i=1}^n (q^{t+1}_i \log 0.5* p(x_i\vert Z_i=1) + (1-q_i^{t+1})\log 0.5* p(x_i\vert Z_i =2))\\
+  % &=  - n\log 2 -\sum_{i=1}^n \left[q^{t+1}_i  \left(\frac{(x_i-\mu_1)^2}{2\sigma_1^2}+\frac{1}{2}\log{2w}+\log \sigma_1\right) + (1-q_i^{t+1}) \left(\frac{(x_i-\mu_2)^2}{2\sigma_2^2}+\frac{1}{2}\log{2w}+\log \sigma_2\right)\right]\\
+  &\quad\quad=  C + \sum_{i=1}^n\left[q^{t+1}_i  \left(\log w-
+  \frac{(x_i-\mu_1)^2}{2}\right) + (1-q_i^{t+1}) 
+  \left(\log(1-w)-\frac{(x_i-\mu_2)^2}{2}\right)\right],
+\end{align*}
+where $C$ is a constant that does not depend on $\vec\theta$ or $q^{t+1}$.}
+
+\item (6 points) Using the expression of $\mathcal{L}$ from the previous
+part, {\bf derive the expressions for the gradients of $\mathcal{L}
+(\vec{\theta}; q^{t+1})$ with respect to $\mu_1, \mu_2, w$.
+By setting these gradients to zero, show that the M-step updates are given
+by}
+\begin{align*}
+  \mu_1^{t+1} &= \frac{\sum_{i=1}^n q_i^{t+1} x_i}{\sum_{i=1}^n q_i^{t+1}},\quad
+  \mu_2^{t+1} = \frac{\sum_{i=1}^n (1-q_i^{t+1}) x_i}{\sum_{i=1}^n (1-q_i^
+  {t+1})},\quad\text{and}\quad
+  w^{t+1} = \frac{\sum_{i=1}^n q_i^{t+1}}{n}.
+\end{align*}
+This complete the derivation of EM updates in the simpler model introduced
+in the beginning of the problem.
+
+\item (5 points) We now see EM in action and compare it with K-means. (No
+code is
+required in the submission.)
+Generate $1000$ samples from the following mixture of two Gaussians in two
+dimensions:
+\begin{align}
+  Z &= \text{Bernoulli}(0.5) + 1 \notag\\
+  X|Z=1 &\sim \mathcal{N}\left( \begin{bmatrix}0\\ 0\end{bmatrix}, \begin{bmatrix}1 & 0\\ 0 & 1\end{bmatrix}\right )\notag\\
+  X|Z=2 &\sim \mathcal{N}\left( \begin{bmatrix}1\\ 0\end{bmatrix}, \begin{bmatrix}1 & 0\\ 0 & 4\end{bmatrix}\right )
+  \label{eq:model_simulate}
+\end{align}
+where $I_2$ denotes the identity matrix in two dimensions.
+\textbf{Generate both $(Z, X)$ for the data and scatter plot the $X$ values
+with color based on $Z$.}
+\textbf{Run K-means on $X$ with $K=2$ and report the cluster centers
+and scatter plot the data with estimated labels.
+Run EM on $X$ to fit two clusters too (use Mclust package with $G=2$)
+and report the mean parameters
+and scatter plot the data with estimated labels.
+Note that we need $3$ plots for this part.
+Justify qualitatively why the cluster centers obtained by K-means and
+EM and the estimated label are different.}
+
+\end{enumerate}
+\end{document}

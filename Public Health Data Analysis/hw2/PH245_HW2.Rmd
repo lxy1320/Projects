@@ -1,0 +1,204 @@
+---
+title: "PH245_hw2"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+PH245 HW2 Xiaoying Liu
+
+1.
+```{r}
+library(ggplot2)
+library(glmnet)
+data=read.table(file='Data-HW2-Bodyfat.txt', header=F)
+colnames(data)=c('Case Number', "BroznekBF", 
+                   "SiriBF", "Density", 
+                   "Age", "Weight", "Height", "AdiposityIndex",
+                   "FatFreeWeight", "NeckCirc", "ChestCirc",
+                   "AbdomenCirc", "HipCirc", "ThighCirc",
+                   "KneeCirc", "AnkleCirc", 
+                   "ExtendedBicepsCirc", "ForearmCirc",
+                   "WristCirc")
+#head(data)
+```
+
+
+#EDA
+```{r}
+ggplot(data=data,aes(x=Age))+geom_histogram(binwidth=1)
+ggplot(data=data,aes(x=Weight))+geom_histogram(binwidth=5)
+ggplot(data=data,aes(x=Height))+geom_histogram(binwidth=0.5)
+print(nrow(data))
+cor(data)
+```
+
+#(a)
+```{r}
+#response variable
+siriBF=data$SiriBF
+
+#predictor variable
+age=data[,5]
+weight=data[,6]
+height=data[,7]
+circumferences=data[,10:19]
+predictors=cbind(age, weight, height, circumferences)
+
+fittingData=cbind(siriBF,predictors)
+
+fittingDataNoOutliers = fittingData[-c(seq(1, nrow(fittingData))[fittingData$weight > 300],
+                                      seq(1, nrow(fittingData))[fittingData$height < 40]
+                                     ),]
+
+#fitting 
+fit = lm(formula=siriBF~., data=fittingDataNoOutliers)
+
+summary(fit)
+
+```
+
+
+#(b)
+```{r}
+#Age Coefficient Estimate: .07189
+#Interpretation: For every increase in age by 1 year, there is a .07189 increase in body fat percentage 
+#via Siri's equation.
+#P-Value: .026389
+#Hypothesis Test with alpha=.05: We would reject our null hypothesis that the coefficient estimate 
+#of age is 0 
+```
+
+
+
+#(c)
+
+```{r}
+#Abdomen Circumference Coefficient Estimate: 0.90452
+#Interpretation: For every increase in Abdomen Circumference by 1 centimeter, there is a 0.90452 increase 
+#in observed body fat percentage via Siri's equation.
+#P-Value: nearly 0
+#Hypothesis Test with alpha=.05: We would reject our null hypothesis that the coefficient estimate 
+#of Abdomen Cicumference is 0
+
+```
+
+#(d)
+```{r}
+fit_values = fitted.values(fit)
+fit_residuals = residuals(fit)
+plot(x=fit_values, y=fit_residuals, xlab='Fitted Values', ylab='Residuals')
+hist(fit_residuals)
+
+#The residual plot appears to be fine -- points seem to be randomly scatteredaround the line y=0. 
+#There doesn't seem to be any sort of particular shape indicating bias.
+
+#key assumptions
+#1.There must be linear relationships between our response and predictor variables.
+#2.Residuals should be normally distributed - The histogram shows a nearly normal distribution.
+#3.There is no multicollinearity. From EDA, eight is heavily correlated with many of the circumferences, 
+#and many of the circumferences seem to be correlated with each other (i.e. hip and thigh)
+#4.Homoscedasticity. there doesn't seem to be any sort of variance in residual across fitted values 
+#and around the line y=0. There also doesn't seem to be any bias in the shape of a particular shape in the residuals. 
+
+```
+
+
+
+#(e)
+```{r}
+#In class, we fit the model with 3 predictor variables(age, weight, and height),and all 4 terms are 
+#assumed to be statistically significant to body fat percentage. However, in our full model, only Age,
+#Abdomen circumference and Wrist cricumference are statistically significant to body fat percentage. 
+#With larger number of predictors, the coefficient of any given predictor is likely to grow smaller 
+#since it contributes less to the response variable. 
+
+#Weight has the smallest p value in reduced model, but weight is one of the least significant predictors 
+#in the full model. Since weight being highly correlated with many of the circumference values, 
+#when these circumference values are added into the model, the coefficient of weight may decrease 
+#because the it captures the essence of circumferences in class model but not in full model. 
+
+
+#In terms of adjusted $R^{2}$, this statistic provides a measure of how well the model is fitting the actual data.
+#The adjusted $R^{2}$ helps to explain how much of the variance in our response variable is 
+#due to our predictor variables. Our class model captures less of the variance than our more full-featured model.
+```
+
+
+#(f)
+
+```{r}
+#We are looking at the magnitude of the differences ($Residuals^{2}$). 
+
+#Null hypothesis: mean ( $Residuals_{Reduced}^{2}$ ) = mean ( $Residuals_{Full}^{2}$ ). 
+#The variance in the observed residuals is due to random chance and both models are equally accurate. 
+
+#Alternative hypothesis: mean ( $Residuals_{Reduced}^{2}$ ) < mean ( $Residuals_{Full}^{2}$ ). 
+#The variance in the observed residuals is not due to random chance and the full model, 
+#with greater accuracy than the reduced model (smaller residuals), is preferred.
+
+
+# Find (Residuals of Full)^2
+full_squared_residuals = fit_residuals**2
+head(full_squared_residuals)
+# Find the (Residuals of Reduced)^2
+reducedFittingData = cbind(siriBF, data[,5:7]) # Relevant Dataset: Response + Reduced Predictors
+
+reducedFittingDataNoOutliers = reducedFittingData[
+    -c(seq(1, nrow(reducedFittingData))[reducedFittingData$Weight > 300],
+       seq(1, nrow(reducedFittingData))[reducedFittingData$Height < 40]
+      ),]
+
+reducedFit = lm(formula=siriBF~., data=reducedFittingDataNoOutliers)
+reduced_squared_residuals = residuals(reducedFit) ** 2
+head(reduced_squared_residuals)
+
+# Run a T-Test on the two sets of squared residuals to determine whether the observed variance 
+#in the two sets of residuals is significant
+ttest = t.test(full_squared_residuals, reduced_squared_residuals)
+
+#Show the results of the T-Test
+print("Null Hypothesis:")
+ttest$null.value 
+print("CI of the difference:")
+ttest$conf.int
+print(paste("T-Statistic:", ttest$statistic))
+print(paste("P-value", ttest$p.value))
+
+#Interpreting the T-Test: in our T-Test, we generated a 95% confidence interval [-16.31, -6.5] 
+#indicating that we are 95% confident that the true value of the difference between our 
+#two residual means lies in that range. With a p-value of nearly 0, we reject our null hypothesis 
+#that the variance in the observed residuals is random.
+
+#What we've tested and found is that the squared residuals of the reduced model are larger than 
+#the squared residuals of our full model in a statistically significant way. 
+
+#Thus, our full model is preferred over the reduced model.
+
+```
+
+
+#(g)
+
+```{r}
+plot(data[,10:19])
+
+#Observing scatter plot,there are pretty high correlations among all of the variables. This matches 
+#our intuition that these circumferences strongly correlated as a human being. 
+#LASSO regularization can zero out some relatively insignificant parameters,  
+#so that there is less multicollinearity among our predictor variables.
+```
+
+
+#(h)
+```{r}
+# Using cross-validation to obtain the best lambda value 
+lassoModel = cv.glmnet(x=as.matrix(fittingDataNoOutliers[,2:ncol(fittingDataNoOutliers)]), 
+                        y=as.matrix(fittingDataNoOutliers[,1]), 
+                        alpha=1)
+plot(lassoModel$glmnet.fit, xlab="lambda", label=TRUE)
+coef(lassoModel, s=lassoModel$lambda.min)
+print(paste("Optimal Lambda: ", lassoModel$lambda.min))
+```
+

@@ -1,0 +1,269 @@
+\documentclass[11pt]{article}\usepackage[]{graphicx}\usepackage[]{color}
+%% maxwidth is the original width if it is less than linewidth
+%% otherwise use linewidth (to make sure the graphics do not exceed the margin)
+\makeatletter
+\def\maxwidth{ %
+  \ifdim\Gin@nat@width>\linewidth
+    \linewidth
+  \else
+    \Gin@nat@width
+  \fi
+}
+\makeatother
+
+\definecolor{fgcolor}{rgb}{0.345, 0.345, 0.345}
+\newcommand{\hlnum}[1]{\textcolor[rgb]{0.686,0.059,0.569}{#1}}%
+\newcommand{\hlstr}[1]{\textcolor[rgb]{0.192,0.494,0.8}{#1}}%
+\newcommand{\hlcom}[1]{\textcolor[rgb]{0.678,0.584,0.686}{\textit{#1}}}%
+\newcommand{\hlopt}[1]{\textcolor[rgb]{0,0,0}{#1}}%
+\newcommand{\hlstd}[1]{\textcolor[rgb]{0.345,0.345,0.345}{#1}}%
+\newcommand{\hlkwa}[1]{\textcolor[rgb]{0.161,0.373,0.58}{\textbf{#1}}}%
+\newcommand{\hlkwb}[1]{\textcolor[rgb]{0.69,0.353,0.396}{#1}}%
+\newcommand{\hlkwc}[1]{\textcolor[rgb]{0.333,0.667,0.333}{#1}}%
+\newcommand{\hlkwd}[1]{\textcolor[rgb]{0.737,0.353,0.396}{\textbf{#1}}}%
+\let\hlipl\hlkwb
+
+\usepackage{framed}
+\makeatletter
+\newenvironment{kframe}{%
+ \def\at@end@of@kframe{}%
+ \ifinner\ifhmode%
+  \def\at@end@of@kframe{\end{minipage}}%
+  \begin{minipage}{\columnwidth}%
+ \fi\fi%
+ \def\FrameCommand##1{\hskip\@totalleftmargin \hskip-\fboxsep
+ \colorbox{shadecolor}{##1}\hskip-\fboxsep
+     % There is no \\@totalrightmargin, so:
+     \hskip-\linewidth \hskip-\@totalleftmargin \hskip\columnwidth}%
+ \MakeFramed {\advance\hsize-\width
+   \@totalleftmargin\z@ \linewidth\hsize
+   \@setminipage}}%
+ {\par\unskip\endMakeFramed%
+ \at@end@of@kframe}
+\makeatother
+
+\definecolor{shadecolor}{rgb}{.97, .97, .97}
+\definecolor{messagecolor}{rgb}{0, 0, 0}
+\definecolor{warningcolor}{rgb}{1, 0, 1}
+\definecolor{errorcolor}{rgb}{1, 0, 0}
+\newenvironment{knitrout}{}{} % an empty environment to be redefined in TeX
+
+\usepackage{alltt}
+\usepackage{amsmath,amssymb,float,amsfonts,enumitem,tcolorbox,bm}
+
+\usepackage{algorithm}
+\usepackage[colorlinks=True,linkcolor=magenta,citecolor=blue,urlcolor=blue,pagebackref=true,backref=true]{hyperref}
+\usepackage[noend]{algpseudocode}
+
+\include{macros}
+
+
+
+\title{STAT 154: Homework 6}
+\author{Release date: \textbf{Sunday, April 7}}
+\date{Due by: \textbf{11 PM, Sunday, April 21}}
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\begin{document}
+
+\maketitle
+
+\section*{The honor code}
+
+\begin{enumerate}[label=(\alph*)]
+\item Please state the names of people who you worked with for this homework.
+You can also provide your comments about the homework here.
+\begin{tcolorbox}
+\vspace{20mm}
+\end{tcolorbox}
+
+\item  Please type/write the following sentences yourself and sign at the end. We want to make
+it \emph{extra} clear that nobody cheats even unintentionally.
+
+\emph{I hereby state that all of my solutions were entirely in my words and were written by me.
+I have not looked at another student’s solutions and I have fairly credited all external 
+sources in this write up.}
+\begin{tcolorbox}
+\vspace{20mm}
+\end{tcolorbox}
+
+\end{enumerate}
+
+\section*{Submission instructions}
+
+\begin{itemize}
+\item It is a good idea to revisit your notes, slides and reading;
+and synthesize their main points BEFORE doing the
+homework.
+
+\item No .Rnw file is provided. You may use templates from previous homeworks
+if you want.
+
+\item \textbf{For the parts that ask you to 
+implement/run some R code, your answer
+should look something like this (code followed by result):}
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlstd{myfun}\hlkwb{<-} \hlkwa{function}\hlstd{()\{}
+\hlkwd{show}\hlstd{(}\hlstr{'this is a dummy function'}\hlstd{)}
+\hlstd{\}}
+\hlkwd{myfun}\hlstd{()}
+\end{alltt}
+\begin{verbatim}
+## [1] "this is a dummy function"
+\end{verbatim}
+\end{kframe}
+\end{knitrout}
+Note that this is automatically generated if you use
+the R sweave environment.
+
+\item You need to submit the following:
+\begin{enumerate}
+\item A pdf of your write-up to ``HW6 write-up'' that includes code for
+Problem 4.
+\item No \emph{separate} code submission is required for this HW. You have
+to include the code in your submission for Problem 4 in the write-up itself.
+\end{enumerate}
+\item Ensure a proper submission to gradescope, otherwise it will
+not be graded. \textbf{This time we will not entertain any regrade
+requests for improper submission.}
+\end{itemize}
+
+% \newpage
+\section*{Homework Overview}
+This homework covers kernel ridge regression and classification. The first
+problems attempts to make you comfortable with computational complexity
+related questions.
+\newpage
+\section{Computational complexity \small{(10 pts)}} % (fold)
+\label{sec:computational_complexity}
+
+Read about the big-O notation for the wiki page \url{https://en.wikipedia.org/wiki/Big_O_notation}
+and then answer the following using the big-O notation.
+
+  In the following questions, by computational complexity we refer
+  to the number of addition/multiplication operations between two real numbers.
+  To elaborate, we assume that two real numbers or multiplying them takes
+  unit operations.
+  Adding $k$ real numbers has $k$ computational complexity.
+  Computing the multiplication of $k$ pairs of numbers would have $k$ 
+  computational complexity as well.\\
+
+  Now let $\vec a, \vec v \in \real^d$ and $\mat A, \mat B \in \real^{n
+  \times
+  d}$ and answer the following questions:
+\begin{enumerate}
+  \item (2 pts) What is the computational complexity of computing $\vec
+  a + \vec
+  v$? What is the computational complexity of computing $\vec a \tp \vec
+  v$?
+  \item (2 pts) What is the computational complexity of computing the matrix
+  $\mat A + \mat B$?  How much space does storing the matrix $\mat A$ require? 
+  \item (4 pts) What is the computational complexity of computing the
+  vector $\mat
+  A \vec v$? How about computing the matrix $\mat A \tp \mat B$?
+  \item (2 pts) What is the complexity of computing the vector $\mat A \tp
+  \mat B \vec v$? \\
+  {\emph{Hint: There are two ways to do it, one is naive and one is smart.
+  You are encouraged to think and report both of them in your answer.}}
+\end{enumerate}
+% section computational_complexity (end)
+
+\section{Kernel Methods \small(23 pts)} % (fold)
+\label{sec:kernel_methods}
+For the following problems, you can assume that inverting a $p \times p$
+matrix takes order $p^3$ operations, i.e., the computational complexity
+of matrix inversion of size $p$ is $O(p^3)$.
+Also for this problem, we use slightly different notation for dimensions
+in order to remain consistent with the note and the lecture.
+\begin{enumerate}
+  \item (2 pts) 
+  Let $\mat X \in \real^{n \times \ell}$ and $\vec y \in \real^n$.
+  Recall
+  that the ridge estimate for the problem
+  \begin{align}
+    \min_{\theta \in \real^\ell} \enorm{\mat X \theta - \vec y}^2 + \lambda
+    \enorm{\theta}^2
+    \label{eq:ridge}
+  \end{align}
+  is given by $\widehat{\theta}_\lambda = (\mat X \tp \mat X + \lambda \mat
+  I_\ell)^{-1}\mat X\tp \vec y$. What is the computational complexity of
+  computing
+  this estimate?\\
+  \emph{Hint: You may use answers from previous question.}
+  \item (2 pts) Show that $\widehat{\theta}_\lambda = \mat X\tp(\mat X \mat
+  X \tp + \lambda \mat I_n)^{-1} \vec y$ is also a valid estimate for the
+  ridge problem~\ref{eq:ridge}.
+  What is the complexity of computing this estimate?
+  \item (2 pts) Compare and contrast the computational complexities from
+  the previous
+  two parts.
+  \newcommand{\newtheta}{\widetilde{\theta}}
+  \item (2 pts) Suppose we modify the problem~\eqref{eq:ridge} using a feature
+  map
+$\phi: \real^\ell \to \real^d$  as follows:
+  \begin{align}
+    &\min_{\newtheta \in \real^d} \enorm{\mat \Phi \newtheta - \vec y}^2
+    + \lambda \Vert{\newtheta}\Vert_2^2
+    \label{eq:ridgenew}\\
+    \text{where}\quad
+    &\mat \Phi = \begin{bmatrix}
+      \text{---}\phi(\vec x_1)\tp \text{---}\\
+      \vdots\\
+      \text{---}\phi(\vec x_n)\tp \text{---}
+    \end{bmatrix}\in \real^{n \times d}.
+  \end{align}
+  Can you provide a few reasons why we may want to do this? (Usually $d
+  \geq \ell$ when we extend the $\vec x$ vectors in this fashion.)
+  \item (8 pts) As discussed in class, often the choice of $\phi$ is (implicitly
+  or explicitly) made such that
+  \begin{align}
+  \label{eq:kernel}
+    \phi(\vec x)\tp\phi(\vec z) = k(x, z)
+  \end{align}
+  where $k:\real^\ell \times \real^\ell \to \real$ denotes the kernel function
+  (that satisfies some nice properties). Can you compute the kernel functions
+  for the following feature maps:
+  \begin{itemize}
+    \item[(a)] $\phi(x) = [x_1x_2, \frac{x_1^2}{\sqrt{2}},
+    \frac{x_2^2}{\sqrt{2}}]\tp$ where $\vec x \in \real^2$ with $\vec x
+    = \begin{bmatrix} x_1 \\ x_2 \end{bmatrix}$.
+    \item[(b)] $\phi(x) = [1, x, \frac{x^2}{\sqrt{2!}}, \frac{x^3}{\sqrt{3!}},
+    \ldots]$ where $x \in \real$.
+  \end{itemize}
+  On the reverse side can you compute the feature map for the following
+  kernel functions (it may not be possible in some cases): 
+  \begin{enumerate}
+    \item[(c)] $k(x, z) = (1 + \vec x \tp \vec z)^2 + \vec x \tp \vec z$ for $\vec x, \vec z \in \real^2$.
+    \item[(d)] $k(x, z) = e^{-(x - z)^2}$ for $x, z \in \real$.
+  \end{enumerate}
+  \item (2 pts) What are the two different ways of computing the solution
+  to the
+  problem~\eqref{eq:ridgenew}? 
+  \item (5 pts) We now compare the complexity of the two estimates for a
+  polynomial
+  kernel. Compare and contrast the computational complexity of the two 
+  estimates when $\vec x \in \real^\ell$ and the feature map $\phi$ is chosen
+  such that the corresponding kernel function~\eqref{eq:kernel} is given
+  by
+  \begin{align*}
+    k(\vec x, \vec z) = (1+ \vec x\tp \vec z)^p.
+  \end{align*}
+  Discuss when is an estimate better than the other (on computational grounds).
+\end{enumerate}
+
+% section kernel_methods (end)
+
+\section{LDA and linear regression \small(10 pts)}
+ESLII book \url{https://web.stanford.edu/~hastie/Papers/ESLII.pdf}: Question
+4.2 (all 5 parts)
+
+\section{Applied problem for classification \small(7 pts)} % (fold)
+\label{sec:applied_problem_for_classification}
+ISL Book: 4.11 (all 7 parts) \textbf{Show code in the write-up pdf for all
+parts.}
+
+
+% section applied_problem_for_classification (end)
+
+\end{document}

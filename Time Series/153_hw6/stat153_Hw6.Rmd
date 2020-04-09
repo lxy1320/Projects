@@ -1,0 +1,76 @@
+---
+title: "Stat153_hw6"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+#1
+```{r}
+#(a)
+library(astsa)
+arma.spec(ar=c(1,-0.9),ma=0,var.noise=1)
+#f=0.17 is dominant
+#simulation
+z=rnorm(50,0,1)
+ts1=arima.sim(n = 50, list(ar = c(1,-0.9),ma = 0), sd = sqrt(1))
+plot(ts1)
+#the time series has a period of approximate 6, which is exactly the inverse of the frequency observed in the spectral density plot.
+
+
+#(b)
+arma.spec(ar=c(0,-0.3,0,-0.9),ma=0,var.noise=1)
+#dominant frequency is 0.13,0.38
+#simulation
+z=rnorm(50,0,1)
+ts2=arima.sim(n=50,list(ar=c(0,-0.3,0,-0.9),ma=0),sd=1)
+plot(ts2)
+#the time series has a period of approximate 8.3(inverse of 1/0.13), Within one period, there is a sub-period which is approximatly 3(inverse of 1/0.38). Thus the plot is consistent with the spectral density graph. 
+
+
+#(c)
+arma.spec(ar=c(0,0,0,0,0.9),ma=0,var.noise=1)
+#dominant frequency is 0,0.2,0.4
+#simulation
+z=rnorm(50,0,1)
+ts3=arima.sim(n=50,list(ar=c(0,0,0,0.9),ma=0),sd=1)
+plot(ts3)
+#the time series has a period of approximate 5(inverse of 0.2),within one period, there is a sub period 2.5(inverse of 0.4), thus the plot is consistent with the spetral density graph. 
+
+
+```
+
+
+#2.Spectral density of AR process
+```{r}
+#(a)see written part
+#(b)
+arma.spec(ar=c(0,0,0.9),ma=0,var.noise=1)
+#from the plot. Xt oscillates. with period of 1/0.33
+period=1/0.33
+period
+#(c)
+ts4=arima.sim(n = 50, list(ar = c(0,0,0.9),ma = 0), sd = sqrt(1))
+plot(ts4)
+
+#the simulation does have a consistant result with my answer in (b)
+#(e)
+density=function(x){
+  y=(1/9*cos(2*pi*x)^2+2/9*cos(2*pi*x)+1/9)/(1.81-1.8*cos(6*pi*x))
+  return(y)
+}
+plot.function(density,n=101,xlim=c(0,1/2))
+#No, I do not think yt will oscillate, since there is no obvious dominant period. Or in another word, dominant frequency is 0, which means the period is infinite. 
+
+#(f)
+ts5=filter(ts4,rep(1/3,3),sides=2,method='convolution')
+plot(ts5)
+#After comparision, we find out that result in (f) is consistent with result in (d). Since there is no obvious period in the smoothed time series. 
+
+```
+

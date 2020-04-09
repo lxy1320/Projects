@@ -1,0 +1,291 @@
+---
+title: "Stat154_hw2"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#1.A few basics of SVD
+#(c)
+```{r}
+x=c(2,4,8,16,32,64,128,256,512,1024,2048)
+time_matrix=c()
+time_svd=c()
+for(i in x){
+start1=Sys.time()
+M=matrix(rnorm(1),i,i)
+end1=Sys.time()
+time_matrix=c(time_matrix,(end1-start1))
+start2=Sys.time()
+svd(M)
+end2=Sys.time()
+time_svd=c(time_svd,(end2-start2))
+}
+
+plot(y=log(time_matrix),x=log(x))
+plot(y=log(time_svd),x=log(x))
+
+
+#Observation
+#It seems that running time almost stay the same at first, it has the biggest increasing rate when n=4.
+#Startig from n=4, running time approximately linearly scaled with n.
+#It makes perfect sense, because when n is smaller than 4,
+#the biggest matrix we got is 4*4, constructing time would not be so much of a difference, 
+#and u,v from its svd is not too large dimension. After n reaches 4,
+#svd calculation scales fast.Thus running time scales fast.
+
+
+
+
+```
+
+#2.1.Power Method
+```{r}
+A=cbind(c(1,2,3),c(2,-1,4),c(3,4,-5))
+w0=c(1,1,1)
+
+powerMethod=function(v,M){
+s0=max(abs(M%*%v))
+v=M%*%v/s0
+s1=max(abs(M%*%v))
+
+while((s1-s0)/s0>0.01){
+  s0=max(abs(M%*%v))
+  v=M%*%v/s0
+  s1=max(abs(M%*%v))
+}
+return(c(v,s1))
+}
+
+
+#using power method to compute first eigen value
+powerMethod(w0,A)
+eigen(A)
+#conclusion
+#By comparing the two eigen values obtained with power method 
+#and eigen value functions. The results are pretty close.
+#We can manually adjust the threhold of sk/sk+1 measurement 
+#to make the result more accruate. 
+#Thus power method is a pretty good way to get the max eigenvalue. 
+  
+```
+
+
+#2.2.Deflation and more eigenvectors
+```{r}
+B=cbind(c(5,1,0),c(1,4,0),c(0,0,1))
+#(a)
+first=powerMethod(w0,B)
+#first eigenvector
+first[1:3]
+#first eigenvalue
+first[4]
+
+
+#(b)
+B1=B-first[4]*first[1:3]%*%t(first[1:3])
+second=powerMethod(w0,B1)
+#second eigenvector
+second[1:3]
+#second eigenvalue
+second[4]
+
+#(c)
+B2=B-second[4]*second[1:3]%*%t(second[1:3])
+third=powerMethod(w0,B2)
+#third eigenvector
+third[1:3]
+#third eigenvalue
+third[4]
+
+
+
+```
+
+
+#3.PCA
+```{r}
+dat=USArrests
+#(a)mean and variance
+apply(dat,2,mean)
+apply(dat,2,var)
+
+#(b)histogram
+apply(dat,2,hist)
+
+#(c)correlation
+cor.test(dat$Murder,dat$Assault)
+cor.test(dat$Rape,dat$Assault)
+cor.test(dat$Rape,dat$Murder)
+#We can see from the pearson correlation test, 
+#that these 3 criminal types are somehow correlated, 
+#especially murder and assualt, correlation as high as 0.8018.
+
+#(d)
+pca1=princomp(dat,cor=TRUE)
+summary(prcomp(dat))
+
+#(e)
+pca1$loadings[,1:3]
+
+#(f)PCs aka Scores
+head(pca1$scores[,1:3])
+
+#(g)eigen_values and sum
+eigen_values=pca1$sdev^2
+sum(eigen_values)
+
+#(h)
+library(ggplot2)
+plot(eigen_values)
+#The eigen values descend from 2.5 to 0.Eigen valeus descend, 
+#which means that PCs are ordered in an descending order, 
+#aka, the first pc captures the most variability. 
+
+#(i)
+scores=as.data.frame(pca1$scores[,c(1,2)])
+ggplot(data=scores,aes(x=Comp.1,y=Comp.2,label=rownames(scores)))+
+  geom_point()+
+  geom_hline(yintercept = 0, colour = "gray65") +
+  geom_vline(xintercept = 0, colour = "gray65") +
+  geom_text(colour = "orange", alpha = 0.8, size = 4) +
+  ggtitle("PCA plot of USA States - Crime Rates")
+
+#which state stands out?
+#Mississippi stands out. Without PCA, it is hard to say 
+#which state stands out regarding crime rate. 
+#However, under PCA(2-dim), Mississipi seems to stand out 
+#to be have the highest overall crime rate.
+
+
+#(j)color states according to UrbanPop
+scores=as.data.frame(pca1$scores[,c(1,2)])
+scores=cbind(scores,dat$UrbanPop)
+ggplot(data=scores,aes(x=Comp.1,y=Comp.2,label=rownames(scores)))+
+  geom_point(aes(color=dat$UrbanPop))+
+  geom_hline(yintercept = 0, colour = "gray65") +
+  geom_vline(xintercept = 0, colour = "gray65") +
+  geom_text(colour = "orange", alpha = 0.8, size = 4) +
+  ggtitle("PCA plot of USA States - Crime Rates")
+
+#(k)
+scores=as.data.frame(pca1$scores[,c(1,3)])
+ggplot(data=scores,aes(x=Comp.1,y=Comp.3,label=rownames(scores)))+
+  geom_point()+
+  geom_hline(yintercept = 0, colour = "gray65") +
+  geom_vline(xintercept = 0, colour = "gray65") +
+  geom_text(colour = "orange", alpha = 0.8, size = 4) +
+  ggtitle("PCA plot of USA States - Crime Rates")
+
+#PC3 has lower variance capturebility, pc2 is better as a PC dimension
+#compared to PC3 to capture variability.
+#In the plot, we observe that y-range is narrower in this plot.
+#Accordingly, the stand-out state has changes under different PC,
+#Alaska stands out in this plot.
+
+```
+
+#4.K-means and PCA
+#10.7
+```{r}
+#(a)generate 3 classes students as our simulation data. 
+class1=rnorm(1000,20,1) #n,mean,sd
+class2=rnorm(1000,60,1)
+class3=rnorm(1000,90,1)
+
+classes=as.data.frame(matrix(data=c(class1,class2,class3),nrow=60,ncol=50),byrow=T)
+group=c(rep(1,20),rep(2,20),rep(3,20))
+classes=cbind(classes,group)
+
+#(b)
+pca2=princomp(classes,cor=TRUE)
+summary(pca2)
+
+head(pca2$scores[,1:2])
+scores2=as.data.frame(pca2$scores[,c(1,2)])
+
+ggplot(data=scores2,aes(x=Comp.1,y=Comp.2))+
+  geom_point(color=group)+
+  geom_hline(yintercept = 0, colour = "gray65") +
+  geom_vline(xintercept = 0, colour = "gray65")
+#Plot shows that there is a visible boundary among three
+#clusters, so we continue to conduct kmeans clustering. 
+
+#(c)
+kmeans(classes,centers=3)
+#conclusion:kmeans clustering with 3 centers on the raw 
+#data does not do very good. Data are clustered into group of 9,11,40. 
+#Comparing to true lable of group 20,20,20. 
+
+
+#(d)
+kmeans(classes,centers=2)
+#conclusion:kmeans clustering with 2 centers on the raw 
+#data does not do very good. Data are clustered into group of #20,40.
+#Comparing to true lable of group 20,20,20. 
+
+
+#(e)
+kmeans(classes,centers=4)
+#conclusion:kmeans clustering with 4 centers on the raw data 
+#does not do very good. 
+#Data are clustered into group of 11,9,20,20.
+#Comparing to true lable of group 20,20,20. 
+#This clusering slightly improves the result, just that more detailed seperation is captured.
+
+
+#(f)
+kmeans(pca2$scores[,1:2],centers=3)
+#conclusion:kmeans clustering with 3 centers on the raw data 
+#does not do very good. 
+#Data are clustered into group of 20,20,20.
+#Comparing to true lable of group 20,20,20. 
+#This clusering improves the result obviously.
+#Thus conducting PCA on raw data is a good data preparation step before doing k-means clustering. 
+
+#(g)
+classes=scale(classes,scale=FALSE)
+kmeans(classes,centers=3)
+#conclusion: stabalize variable variance helps a lot 
+#on k-means clustering results( with raw data). 
+#It could be an alternative way of doing PCA as
+#a data pre-processing step before doing k-means clustering. 
+
+
+
+```
+
+
+
+
+#5.T/F
+#(a)T. We calculate transpose(X)*X, in such way that 
+#eigenvalues are always non-negative. 
+
+#(b)T. The purpose of PCA is to find orthogonal basis,
+#and to lower dimensions until there is a 
+#balance between dimension and variability.
+
+#(c)F. M has to be symmetric and has non-negative eigenvalues. 
+
+#(d)T. One purpose of PCA is to deduct dimensions.
+
+#(e)F. Eigenvalurs are very possible to be negative. 
+
+#(f).F.y-axis is ordered eigenvalues of PC, possible to exceed 1.
+
+#(g)T.PCA will never increase dimensions. 
+
+
+
+
+
+
+
+
+
+
+
+
